@@ -955,20 +955,20 @@ public class RoutingRequest implements AutoCloseable, Cloneable, Serializable {
      * false - if location is a feedId, contains coordinates or no bikeRental mode was set.
      */
     private boolean isLocationMaybeBikeRentalStationId(GenericLocation location, QualifiedModeSet modeSet) {
-        return isRentedBicycleMode(modeSet) &&
+        return isModeRentedBicycle(modeSet) &&
                 location.stopId == null &&
                 location.lat == null &&
                 location.lng == null;
     }
 
     /**
-     * isRentedBicycleMode
+     * isModeRentedBicycle
      * This method validates, if "BICYCLE_RENT" was set in the queryParameter "mode"
      * @param modeSet : QualifiedModeSet object, which represents mode-settings.
      * @return
      * true - mode contains BICYCLE_RENT <br/> false - mode contains no BICYCLE_RENT
      */
-    private Boolean isRentedBicycleMode(QualifiedModeSet modeSet) {
+    private Boolean isModeRentedBicycle(QualifiedModeSet modeSet) {
         return modeSet.qModes
                 .stream()
                 .anyMatch(mode -> mode.mode.equals(ApiRequestMode.BICYCLE) && mode.qualifiers.contains(Qualifier.RENT));
