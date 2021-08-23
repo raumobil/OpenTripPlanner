@@ -635,6 +635,9 @@ public abstract class RoutingResource {
     @QueryParam("pathComparator")
     private String pathComparator;
 
+    @QueryParam("useBikeRentalDockAvailabilityInformation")
+    private Boolean useBikeRentalDockAvailabilityInformation;
+
     /**
      * somewhat ugly bug fix: the graphService is only needed here for fetching per-graph time zones. 
      * this should ideally be done when setting the routing context, but at present departure/
@@ -658,11 +661,9 @@ public abstract class RoutingResource {
         // The routing request should already contain defaults, which are set when it is initialized or in the JSON
         // router configuration and cloned. We check whether each parameter was supplied before overwriting the default.
         if (fromPlace != null)
-            request.from = LocationStringParser.fromOldStyleString(fromPlace);
-
+            request.setFromString(fromPlace, modes, router);
         if (toPlace != null)
-            request.to = LocationStringParser.fromOldStyleString(toPlace);
-
+            request.setToString(toPlace, modes, router);
         {
             //FIXME: move into setter method on routing request
             TimeZone tz;
@@ -846,6 +847,10 @@ public abstract class RoutingResource {
         final long NOW_THRESHOLD_MILLIS = 15 * 60 * 60 * 1000;
         boolean tripPlannedForNow = Math.abs(request.getDateTime().getTime() - new Date().getTime()) < NOW_THRESHOLD_MILLIS;
         request.useBikeRentalAvailabilityInformation = tripPlannedForNow; // TODO the same thing for GTFS-RT
+
+        if (useBikeRentalDockAvailabilityInformation != null) {
+            request.useBikeRentalDockAvailabilityInformation = useBikeRentalDockAvailabilityInformation;
+        }
 
         if (startTransitStopId != null && !startTransitStopId.isEmpty())
             request.startingTransitStopId = FeedScopedId.parseId(startTransitStopId);

@@ -54,7 +54,7 @@ public class BikeRentalEdge extends Edge {
                     }
                     break;
                 case RENTING_FROM_STATION:
-                    if (options.useBikeRentalAvailabilityInformation && stationVertex.getBikesAvailable() == 0) {
+                    if (options.useBikeRentalDockAvailabilityInformation && options.useBikeRentalAvailabilityInformation && stationVertex.getBikesAvailable() == 0) {
                         return null;
                     }
                     // For arriveBy searches mayKeepRentedBicycleAtDestination is only set in State#getInitialStates(),
@@ -92,7 +92,7 @@ public class BikeRentalEdge extends Edge {
                 case RENTING_FLOATING:
                 case RENTING_FROM_STATION:
                     if (!hasCompatibleNetworks(networks, s0.getBikeRentalNetworks())) { return null; }
-                    if (options.useBikeRentalAvailabilityInformation && stationVertex.getSpacesAvailable() == 0) {
+                    if (options.useBikeRentalDockAvailabilityInformation && options.useBikeRentalAvailabilityInformation && stationVertex.getSpacesAvailable() == 0) {
                         return null;
                     }
                     s1.dropOffRentedVehicleAtStation(stationVertex.getVehicleMode(), networks, false);
