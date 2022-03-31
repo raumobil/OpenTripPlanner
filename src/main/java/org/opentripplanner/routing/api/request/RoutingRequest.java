@@ -637,11 +637,6 @@ public class RoutingRequest implements AutoCloseable, Cloneable, Serializable {
     public boolean useVehicleRentalAvailabilityInformation = false;
 
     /**
-     * Whether or not bike rental docks availability information will be used to plan bike rental trips
-     */
-    public boolean useBikeRentalDockAvailabilityInformation = true;
-
-    /**
      * Whether arriving at the destination with a rented (station) bicycle is allowed without
      * dropping it off.
      *

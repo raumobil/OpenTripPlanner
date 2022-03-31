@@ -704,9 +704,6 @@ public abstract class RoutingResource {
     @QueryParam("debugRaptorPath")
     private String debugRaptorPath;
 
-    @QueryParam("useBikeRentalDockAvailabilityInformation")
-    private Boolean useBikeRentalDockAvailabilityInformation;
-
     /**
      * somewhat ugly bug fix: the graphService is only needed here for fetching per-graph time zones. 
      * this should ideally be done when setting the routing context, but at present departure/
@@ -936,10 +933,6 @@ public abstract class RoutingResource {
             request.maxTransfers = maxTransfers;
 
         request.useVehicleRentalAvailabilityInformation = request.isTripPlannedForNow();
-
-        if (useBikeRentalDockAvailabilityInformation != null) {
-            request.useBikeRentalDockAvailabilityInformation = useBikeRentalDockAvailabilityInformation;
-        }
 
         if (startTransitStopId != null && !startTransitStopId.isEmpty())
             request.startingTransitStopId = FeedScopedId.parseId(startTransitStopId);
