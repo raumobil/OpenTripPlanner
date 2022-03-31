@@ -1,7 +1,7 @@
 /* This file is based on code copied from project OneBusAway, see the LICENSE file for further information. */
 package org.opentripplanner.model;
 
-import java.util.Objects;
+import java.util.List;
 import org.opentripplanner.util.time.TimeUtils;
 
 
@@ -30,11 +30,13 @@ public final class StopTime implements Comparable<StopTime> {
 
     private String stopHeadsign;
 
+    private List<String> headsignVias;
+
     private String routeShortName;
 
-    private int pickupType;
+    private PickDrop pickupType = PickDrop.SCHEDULED;
 
-    private int dropOffType;
+    private PickDrop dropOffType = PickDrop.SCHEDULED;
 
     private double shapeDistTraveled = MISSING_VALUE;
 
@@ -76,6 +78,7 @@ public final class StopTime implements Comparable<StopTime> {
         this.flexContinuousDropOff = st.flexContinuousDropOff;
         this.dropOffBookingInfo = st.dropOffBookingInfo;
         this.pickupBookingInfo = st.pickupBookingInfo;
+        this.headsignVias = st.headsignVias;
     }
 
     /**
@@ -188,19 +191,19 @@ public final class StopTime implements Comparable<StopTime> {
         this.routeShortName = routeShortName;
     }
 
-    public int getPickupType() {
+    public PickDrop getPickupType() {
         return pickupType;
     }
 
-    public void setPickupType(int pickupType) {
+    public void setPickupType(PickDrop pickupType) {
         this.pickupType = pickupType;
     }
 
-    public int getDropOffType() {
+    public PickDrop getDropOffType() {
         return dropOffType;
     }
 
-    public void setDropOffType(int dropOffType) {
+    public void setDropOffType(PickDrop dropOffType) {
         this.dropOffType = dropOffType;
     }
 
@@ -276,8 +279,29 @@ public final class StopTime implements Comparable<StopTime> {
         this.pickupBookingInfo = pickupBookingInfo;
     }
 
+    public List<String> getHeadsignVias() {
+        return headsignVias;
+    }
+
+    public void setHeadsignVias(List<String> headsignVias) {
+        this.headsignVias = headsignVias;
+    }
+
     public int compareTo(StopTime o) {
         return this.getStopSequence() - o.getStopSequence();
+    }
+
+    public void cancel() {
+        pickupType = PickDrop.CANCELLED;
+        dropOffType = PickDrop.CANCELLED;
+    }
+
+    public void cancelDropOff() {
+        dropOffType = PickDrop.CANCELLED;
+    }
+
+    public void cancelPickup() {
+        pickupType = PickDrop.CANCELLED;
     }
 
     @Override

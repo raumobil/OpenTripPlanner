@@ -1,5 +1,7 @@
 package org.opentripplanner.common.geometry;
 
+import java.util.Arrays;
+import java.util.List;
 import org.geojson.GeoJsonObject;
 import org.geojson.LngLatAlt;
 import org.geotools.referencing.CRS;
@@ -7,20 +9,20 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateSequence;
 import org.locationtech.jts.geom.CoordinateSequenceFactory;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.linearref.LengthLocationMap;
 import org.locationtech.jts.linearref.LinearLocation;
 import org.locationtech.jts.linearref.LocationIndexedLine;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opentripplanner.common.model.P2;
+import org.opentripplanner.model.WgsCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Arrays;
-import java.util.List;
 
 public class GeometryUtils {
     private static final Logger LOG = LoggerFactory.getLogger(GeometryUtils.class);
@@ -46,6 +48,11 @@ public class GeometryUtils {
             coordinates[i / 2] = new Coordinate(coords[i], coords[i+1]);
         }
         return factory.createLineString(coordinates);
+    }
+
+    public static LineString makeLineString(List<Coordinate> coordinates) {
+        GeometryFactory factory = getGeometryFactory();
+        return factory.createLineString(coordinates.toArray(new Coordinate[]{}));
     }
 
     public static LineString makeLineString(Coordinate[] coordinates) {
@@ -223,4 +230,5 @@ public class GeometryUtils {
         }
         return coords;
     }
+
 }

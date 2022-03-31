@@ -12,38 +12,38 @@ import org.opentripplanner.transit.raptor.api.transit.RaptorTripSchedule;
  */
 public final class EgressPathLeg<T extends RaptorTripSchedule> implements PathLeg<T> {
     private final RaptorTransfer egress;
-    private final int fromStop;
     private final int fromTime;
     private final int toTime;
+    private final int generalizedCost;
 
-    public EgressPathLeg(RaptorTransfer egress, int fromStop, int fromTime, int toTime) {
+    public EgressPathLeg(RaptorTransfer egress, int fromTime, int toTime, int generalizedCost) {
         this.egress = egress;
-        this.fromStop = fromStop;
         this.fromTime = fromTime;
         this.toTime = toTime;
+        this.generalizedCost = generalizedCost;
     }
 
     /**
      * The stop index where the leg start, also called the leg departure stop index.
      */
     @Override
-    public final int fromStop() {
-        return fromStop;
+    public int fromStop() {
+        return egress.stop();
     }
 
     @Override
-    public final int fromTime() {
+    public int fromTime() {
         return fromTime;
     }
 
     @Override
-    public final int toTime() {
+    public int toTime() {
         return toTime;
     }
 
     @Override
     public int generalizedCost() {
-        return egress.generalizedCost();
+        return generalizedCost;
     }
 
     public RaptorTransfer egress() {
@@ -54,14 +54,14 @@ public final class EgressPathLeg<T extends RaptorTripSchedule> implements PathLe
      * @throws UnsupportedOperationException - an egress leg is the last leg in a path and does not have a next leg.
      */
     @Override
-    public final TransitPathLeg<T> nextLeg() {
+    public TransitPathLeg<T> nextLeg() {
         throw new java.lang.UnsupportedOperationException(
                 "The egress leg is the last leg in a path. Use isEgressLeg() to identify last leg."
         );
     }
 
     @Override
-    public final boolean isEgressLeg() {
+    public boolean isEgressLeg() {
         return true;
     }
 
@@ -75,13 +75,13 @@ public final class EgressPathLeg<T extends RaptorTripSchedule> implements PathLe
         if (this == o) { return true; }
         if (o == null || getClass() != o.getClass()) { return false; }
         EgressPathLeg<?> that = (EgressPathLeg<?>) o;
-        return fromStop == that.fromStop &&
+        return fromStop() == that.fromStop() &&
                 fromTime == that.fromTime &&
                 toTime == that.toTime;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fromStop, fromTime, toTime);
+        return Objects.hash(fromStop(), fromTime, toTime);
     }
 }

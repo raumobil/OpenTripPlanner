@@ -3,8 +3,10 @@ package org.opentripplanner.routing.street;
 import static org.opentripplanner.PolylineAssert.assertThatPolylinesAreEqual;
 
 import java.io.IOException;
+import java.time.Instant;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.locationtech.jts.geom.Geometry;
 import org.opentripplanner.ConstantsForTests;
 import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.routing.algorithm.mapping.GraphPathToItineraryMapper;
@@ -15,10 +17,11 @@ import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.impl.GraphPathFinder;
 import org.opentripplanner.standalone.config.RouterConfig;
 import org.opentripplanner.standalone.server.Router;
+import org.opentripplanner.util.PolylineEncoder;
 import org.opentripplanner.util.TestUtils;
 
 /*
- * When bus stops are added to graph they split an existing edge in two parts so that an artifical
+ * When bus stops are added to graph they split an existing edge in two parts so that an artificial
  * intersection can be added and routes can be found to the station.
  *
  * During this process turn restrictions also need to be propagated from the old edges to the newly
@@ -38,11 +41,11 @@ public class SplitEdgeTurnRestrictionsTest {
     static GenericLocation herrenbergerStrasse = new GenericLocation(48.68497, 9.00909);
     static GenericLocation steinbeissWeg = new GenericLocation(48.68172, 9.00599);
 
-    static long dateTime = TestUtils.dateInSeconds("Europe/Berlin", 2020, 3, 3, 7, 0, 0);
+    static final Instant dateTime = TestUtils.dateInstant("Europe/Berlin", 2020, 3, 3, 7, 0, 0);
 
     @Test
     public void shouldTakeDeufringenTurnRestrictionsIntoAccount() throws IOException {
-        Graph graph = ConstantsForTests.buildGtfsGraph(
+        Graph graph = ConstantsForTests.buildOsmAndGtfsGraph(
                 ConstantsForTests.DEUFRINGEN_OSM,
                 ConstantsForTests.VVS_BUS_764_ONLY
         );
@@ -82,7 +85,7 @@ public class SplitEdgeTurnRestrictionsTest {
     public void shouldTakeBoeblingenTurnRestrictionsIntoAccount() throws IOException {
         // this tests that the following turn restriction is transferred correctly to the split edges
         // https://www.openstreetmap.org/relation/299171
-        var graph = ConstantsForTests.buildGtfsGraph(
+        var graph = ConstantsForTests.buildOsmAndGtfsGraph(
                 ConstantsForTests.BOEBLINGEN_OSM,
                 ConstantsForTests.VVS_BUS_751_ONLY
         );
@@ -140,7 +143,7 @@ public class SplitEdgeTurnRestrictionsTest {
             GenericLocation to
     ) {
         RoutingRequest request = new RoutingRequest();
-        request.dateTime = dateTime;
+        request.setDateTime(dateTime);
         request.from = from;
         request.to = to;
 
@@ -151,10 +154,11 @@ public class SplitEdgeTurnRestrictionsTest {
         var gpf = new GraphPathFinder(new Router(graph, RouterConfig.DEFAULT));
         var paths = gpf.graphPathFinderEntryPoint(request);
 
-        var itineraries = GraphPathToItineraryMapper.mapItineraries(paths, request);
+        var itineraries = GraphPathToItineraryMapper.mapItineraries(paths);
         // make sure that we only get CAR legs
         itineraries.forEach(
-                i -> i.legs.forEach(l -> Assertions.assertEquals(l.mode, TraverseMode.CAR)));
-        return itineraries.get(0).legs.get(0).legGeometry.getPoints();
+                i -> i.legs.forEach(l -> Assertions.assertEquals(l.getMode(), TraverseMode.CAR)));
+        Geometry geometry = itineraries.get(0).legs.get(0).getLegGeometry();
+        return PolylineEncoder.createEncodings(geometry).getPoints();
     }
 }

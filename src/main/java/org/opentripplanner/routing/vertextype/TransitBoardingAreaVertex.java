@@ -5,6 +5,7 @@ import org.opentripplanner.model.StationElement;
 import org.opentripplanner.model.WheelChairBoarding;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.util.NonLocalizedString;
 
 public class TransitBoardingAreaVertex extends Vertex {
   private static final long serialVersionUID = 1L;
@@ -20,18 +21,14 @@ public class TransitBoardingAreaVertex extends Vertex {
     super(
         graph,
         boardingArea.getId().toString(),
-        boardingArea.getLon(),
-        boardingArea.getLat()
+        boardingArea.getCoordinate().longitude(),
+        boardingArea.getCoordinate().latitude(),
+        new NonLocalizedString(boardingArea.getName())
     );
     this.boardingArea = boardingArea;
     this.wheelchairAccessible = boardingArea.getWheelchairBoarding() != WheelChairBoarding.NOT_POSSIBLE;
     //Adds this vertex into graph envelope so that we don't need to loop over all vertices
-    graph.expandToInclude(boardingArea.getLon(), boardingArea.getLat());
-  }
-
-  @Override
-  public String getName() {
-    return boardingArea.getName();
+    graph.expandToInclude(boardingArea.getCoordinate().longitude(), boardingArea.getCoordinate().latitude());
   }
 
   public boolean isWheelchairAccessible() {

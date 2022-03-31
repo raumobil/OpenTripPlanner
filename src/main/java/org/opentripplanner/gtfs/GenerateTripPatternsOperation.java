@@ -102,7 +102,7 @@ public class GenerateTripPatternsOperation {
         // TODO: move to a validator module
         // Check that the mode is supported
         if(trip.getRoute().getMode() == null) {
-            issueStore.add(new GTFSModeNotSupported(trip, Integer.toString(trip.getRoute().getType())));
+            issueStore.add(new GTFSModeNotSupported(trip, Integer.toString(trip.getRoute().getGtfsType())));
             return;
         }
 
@@ -150,7 +150,7 @@ public class GenerateTripPatternsOperation {
 
     private TripPattern findOrCreateTripPattern(StopPattern stopPattern, Route route, Direction direction) {
         for(TripPattern tripPattern : tripPatterns.get(stopPattern)) {
-            if(tripPattern.route.equals(route) && tripPattern.getDirection().equals(direction)) {
+            if(tripPattern.getRoute().equals(route) && tripPattern.getDirection().equals(direction)) {
                 return tripPattern;
             }
         }

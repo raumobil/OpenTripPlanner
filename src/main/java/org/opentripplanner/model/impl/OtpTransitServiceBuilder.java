@@ -35,13 +35,15 @@ import org.opentripplanner.model.TransitEntity;
 import org.opentripplanner.model.Trip;
 import org.opentripplanner.model.TripPattern;
 import org.opentripplanner.model.TripStopTimes;
+import org.opentripplanner.model.Branding;
 import org.opentripplanner.model.calendar.CalendarServiceData;
 import org.opentripplanner.model.calendar.ServiceCalendar;
 import org.opentripplanner.model.calendar.ServiceCalendarDate;
 import org.opentripplanner.model.calendar.ServiceDateInterval;
 import org.opentripplanner.model.calendar.impl.CalendarServiceDataFactoryImpl;
-import org.opentripplanner.model.transfer.Transfer;
+import org.opentripplanner.model.transfer.ConstrainedTransfer;
 import org.opentripplanner.model.transfer.TransferPoint;
+import org.opentripplanner.util.OtpAppException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,13 +101,15 @@ public class OtpTransitServiceBuilder {
 
     private final EntityById<FareZone> fareZonesById = new EntityById<>();
 
-    private final List<Transfer> transfers = new ArrayList<>();
+    private final List<ConstrainedTransfer> transfers = new ArrayList<>();
 
     private final EntityById<Trip> tripsById = new EntityById<>();
 
     private final Multimap<StopPattern, TripPattern> tripPatterns = ArrayListMultimap.create();
 
     private final EntityById<FlexTrip> flexTripsById = new EntityById<>();
+
+    private final EntityById<Branding> brandingsById = new EntityById<>();
 
     public OtpTransitServiceBuilder() {
     }
@@ -206,7 +210,7 @@ public class OtpTransitServiceBuilder {
 
     public EntityById<FareZone> getFareZonesById() { return fareZonesById; }
 
-    public List<Transfer> getTransfers() {
+    public List<ConstrainedTransfer> getTransfers() {
         return transfers;
     }
 
@@ -222,6 +226,9 @@ public class OtpTransitServiceBuilder {
         return flexTripsById;
     }
 
+    public EntityById<Branding> getBrandingsById() {
+        return brandingsById;
+    }
 
     /**
      * Find all serviceIds in both CalendarServices and CalendarServiceDates.
@@ -280,12 +287,26 @@ public class OtpTransitServiceBuilder {
             calendars.addAll(keepCal);
             logRemove("ServiceCalendar", orgSize, calendars.size(), "Outside time period.");
         }
+        final int originalNumOfTrips = numberOfTrips();
         removeEntitiesWithInvalidReferences();
+
+        // All trips are removed, then exit with error
+        if(originalNumOfTrips > 0 && numberOfTrips() == 0) {
+            throw new OtpAppException(
+                    "The provided transit date have no trips within the configured transit " +
+                    "service period. See build config 'transitServiceStart' and " +
+                    "'transitServiceEnd': " + periodLimit
+            );
+        }
         LOG.info("Limiting transit service days to time period complete.");
     }
 
+    private int numberOfTrips() {
+        return tripsById.size() + flexTripsById.size();
+    }
+
     /**
-     * Check all relations and remove entities witch reference none existing entries. This
+     * Check all relations and remove entities which reference none existing entries. This
      * may happen as a result of inconsistent data or by deliberate removal of elements in the
      * builder.
      */
@@ -296,7 +317,7 @@ public class OtpTransitServiceBuilder {
         removeTransfersForNoneExistingTrips();
     }
 
-    /** Remove all trips witch reference none existing service ids */
+    /** Remove all trips which reference none existing service ids */
     private void removeTripsWithNoneExistingServiceIds() {
         Set<FeedScopedId> serviceIds = findAllServiceIds();
         int orgSize = tripsById.size();
@@ -304,7 +325,7 @@ public class OtpTransitServiceBuilder {
         logRemove("Trip", orgSize, tripsById.size(), "Trip service id does not exist.");
     }
 
-    /** Remove all stopTimes witch reference none existing trips */
+    /** Remove all stopTimes which reference none existing trips */
     private void removeStopTimesForNoneExistingTrips() {
         int orgSize = stopTimesByTrip.size();
         stopTimesByTrip.removeIf(t -> !tripsById.containsKey(t.getId()));
@@ -319,7 +340,7 @@ public class OtpTransitServiceBuilder {
         for (Map.Entry<StopPattern, TripPattern> e : tripPatterns.entries()) {
             TripPattern ptn = e.getValue();
             ptn.removeTrips(t -> !tripsById.containsKey(t.getId()));
-            if(ptn.getTrips().isEmpty()) {
+            if(ptn.scheduledTripsAsStream().findAny().isEmpty()) {
                 removePatterns.add(e);
             }
         }
@@ -329,22 +350,27 @@ public class OtpTransitServiceBuilder {
         logRemove("TripPattern", orgSize, tripPatterns.size(), "No trips for pattern exist.");
     }
 
-    /** Remove all transfers witch reference none existing trips */
+    /** Remove all transfers which reference none existing trips */
     private void removeTransfersForNoneExistingTrips() {
         int orgSize = transfers.size();
-        transfers.removeIf(this::transferTripsDoesNotExist);
+        transfers.removeIf(this::transferTripReferencesDoNotExist);
         logRemove("Trip", orgSize, transfers.size(), "Transfer to/from trip does not exist.");
     }
 
     /** Return {@code true} if the from/to trip reference is none null, but do not exist. */
-    private boolean transferTripsDoesNotExist(Transfer t) {
-        return transferTripPointDoesNotExist(t.getFrom())
-            || transferTripPointDoesNotExist(t.getTo());
+    private boolean transferTripReferencesDoNotExist(ConstrainedTransfer t) {
+        return transferPointTripReferenceDoesNotExist(t.getFrom())
+            || transferPointTripReferenceDoesNotExist(t.getTo());
     }
 
-    /** Return true if the trip is a valid reference; {@code null} or exist. */
-    private boolean transferTripPointDoesNotExist(TransferPoint p) {
-        return p.getTrip() != null && !tripsById.containsKey(p.getTrip().getId());
+    /**
+     * Return {@code true} if the the point is a trip-transfer-point and the trip reference
+     * is missing.
+     */
+    private boolean transferPointTripReferenceDoesNotExist(TransferPoint point) {
+        if(!point.isTripTransferPoint()) { return false; }
+        var trip = point.asTripTransferPoint().getTrip();
+        return !tripsById.containsKey(trip.getId());
     }
 
     private static void logRemove(String type, int orgSize, int newSize, String reason) {

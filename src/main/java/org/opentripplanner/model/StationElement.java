@@ -1,8 +1,10 @@
 package org.opentripplanner.model;
 
+import javax.annotation.Nonnull;
+
 /**
  * Acts as the supertype for all entities, except stations, created from the GTFS stops table. Most
- * of the fileds are shared between the types, and eg. in pathways the namespace any of them can be
+ * of the fields are shared between the types, and eg. in pathways the namespace any of them can be
  * used as from and to.
  */
 public abstract class StationElement extends TransitEntity {
@@ -42,6 +44,7 @@ public abstract class StationElement extends TransitEntity {
   /**
    * Name of the station element if provided.
    */
+  @Nonnull
   public String getName() {
     return name;
   }
@@ -58,14 +61,6 @@ public abstract class StationElement extends TransitEntity {
    */
   public String getDescription() {
     return description;
-  }
-
-  public double getLat() {
-    return getCoordinate().latitude();
-  }
-
-  public double getLon() {
-    return getCoordinate().longitude();
   }
 
   /**
@@ -123,8 +118,12 @@ public abstract class StationElement extends TransitEntity {
    * Return {@code true} if this stop (element) has the same parent station as the other stop
    * (element).
    */
-  public boolean isPartOfSameStationAs(StationElement other) {
-    return isPartOfStation() && parentStation.equals(other.parentStation);
+  public boolean isPartOfSameStationAs(StopLocation other) {
+    if (other == null) {
+      return false;
+    }
+
+    return isPartOfStation() && parentStation.equals(other.getParentStation());
   }
 
   public void setParentStation(Station parentStation) {

@@ -1,7 +1,6 @@
 package org.opentripplanner.transit.raptor.rangeraptor;
 
 import java.util.function.IntConsumer;
-import java.util.function.ToIntFunction;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTransfer;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTripPattern;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTripSchedule;
@@ -40,7 +39,7 @@ public interface RoutingStrategy<T extends RaptorTripSchedule> {
     /**
      * Alight the current trip at the given stop with the arrival times.
      */
-    void alight(final int stopIndex, final int stopPos, ToIntFunction<T> getStopArrivalTime);
+    void alight(final int stopIndex, final int stopPos, final int alightSlack);
 
     /**
      * Board trip for each stopArrival (Std have only one "best" arrival, while Mc may have many).
@@ -52,10 +51,15 @@ public interface RoutingStrategy<T extends RaptorTripSchedule> {
      * guaranteed transfers.
      */
     TransitArrival<T> previousTransit(int boardStopIndex);
+
+    /**
+     * Board the given trip(event) at the given stop index.
+     * @param earliestBoardTime used to calculate wait-time (if needed)
+     */
     void board(
             final int stopIndex,
             final int earliestBoardTime,
-            RaptorTripScheduleBoardOrAlightEvent<T> result
+            RaptorTripScheduleBoardOrAlightEvent<T> boarding
     );
 
     /**
@@ -67,4 +71,16 @@ public interface RoutingStrategy<T extends RaptorTripSchedule> {
      * Return -1 to if the tripIndex is unknown.
      */
     default int onTripIndex() { return -1; }
+
+    /**
+     * This method allow the strategy to replace the existing boarding (if it exists) with
+     * a better option. It is left to the implementation to check that a boarding already exist.
+     *
+     * @param earliestBoardTime - the earliest possible time a boarding can take place
+     * @param stopPos - the pattern stop position
+     * @param stopIndex - the global stop index
+     */
+    default void boardSameTrip(int earliestBoardTime, int stopPos, int stopIndex) {
+        // Do nothing. For standard and multi-criteria Raptor we do not need to do anything.
+    }
 }

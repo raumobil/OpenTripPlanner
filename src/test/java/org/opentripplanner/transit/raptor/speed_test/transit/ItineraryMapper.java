@@ -7,8 +7,9 @@ import java.util.Collection;
 import java.util.List;
 import org.opentripplanner.model.Route;
 import org.opentripplanner.model.TripPattern;
-import org.opentripplanner.routing.algorithm.raptor.transit.TransitLayer;
-import org.opentripplanner.routing.algorithm.raptor.transit.TripSchedule;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.TransitLayer;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.cost.RaptorCostConverter;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
 import org.opentripplanner.transit.raptor.api.path.AccessPathLeg;
@@ -23,8 +24,8 @@ import org.opentripplanner.transit.raptor.speed_test.model.Leg;
 import org.opentripplanner.transit.raptor.speed_test.model.Place;
 
 public class ItineraryMapper {
-    private SpeedTestRequest request;
-    private TransitLayer transitLayer;
+    private final SpeedTestRequest request;
+    private final TransitLayer transitLayer;
 
     /**
      * @param transitLayer - need to be passed in because we do not know if we use the static or real-time version
@@ -70,7 +71,7 @@ public class ItineraryMapper {
         itinerary.walkDistance = 0.0;
         itinerary.transitTime = 0;
         itinerary.waitingTime = 0;
-        itinerary.weight = path.otpDomainCost();
+        itinerary.weight = RaptorCostConverter.toOtpDomainCost(path.generalizedCost());
 
         int numberOfTransits = 0;
 
@@ -121,7 +122,7 @@ public class ItineraryMapper {
 
                 TripSchedule tripSchedule = it.trip();
                 TripPattern tripPattern = tripSchedule.getOriginalTripPattern();
-                Route routeInfo = tripPattern.route;
+                Route routeInfo = tripPattern.getRoute();
 
 
                 leg.from = mapToPlace(it.fromStop());
@@ -129,7 +130,7 @@ public class ItineraryMapper {
 
                 leg.route = routeInfo.getShortName();
                 leg.agencyName = routeInfo.getAgency().getName();
-                leg.tripShortName = tripSchedule.getOriginalTripPattern().name;
+                leg.tripShortName = tripSchedule.getOriginalTripPattern().getName();
                 leg.agencyId = routeInfo.getAgency().getId();
                 leg.routeShortName = routeInfo.getShortName()   ;
                 leg.routeLongName = routeInfo.getLongName();

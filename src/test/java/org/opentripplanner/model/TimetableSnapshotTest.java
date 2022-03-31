@@ -45,9 +45,9 @@ public class TimetableSnapshotTest {
 
         patternIndex = new HashMap<>();
         for (TripPattern tripPattern : graph.tripPatternForId.values()) {
-            for (Trip trip : tripPattern.getTrips()) {
-                patternIndex.put(trip.getId(), tripPattern);
-            }
+            tripPattern.scheduledTripsAsStream().forEach(trip ->
+                patternIndex.put(trip.getId(), tripPattern)
+            );
         }
     }
 
@@ -60,7 +60,7 @@ public class TimetableSnapshotTest {
     }
     
     private boolean updateResolver(TimetableSnapshot resolver, TripPattern pattern, TripUpdate tripUpdate, String feedId, ServiceDate serviceDate) {
-        TripTimes updatedTripTimes = pattern.scheduledTimetable.createUpdatedTripTimes(tripUpdate,
+        TripTimes updatedTripTimes = pattern.getScheduledTimetable().createUpdatedTripTimes(tripUpdate,
                 timeZone, serviceDate);
         return resolver.update(pattern, updatedTripTimes, serviceDate);
     }

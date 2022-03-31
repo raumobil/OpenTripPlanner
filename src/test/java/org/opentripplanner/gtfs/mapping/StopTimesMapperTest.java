@@ -14,6 +14,7 @@ import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
+import org.opentripplanner.graph_builder.DataImportIssueStore;
 
 public class StopTimesMapperTest {
     private static final String FEED_ID = "FEED";
@@ -76,7 +77,7 @@ public class StopTimesMapperTest {
             stopMapper,
             locationMapper,
             locationGroupMapper,
-            new TripMapper(new RouteMapper(new AgencyMapper(FEED_ID))),
+            new TripMapper(new RouteMapper(new AgencyMapper(FEED_ID), new DataImportIssueStore(false))),
             bookingRuleMapper
     );
 
@@ -93,9 +94,9 @@ public class StopTimesMapperTest {
 
         assertEquals(ARRIVAL_TIME, result.getArrivalTime());
         assertEquals(DEPARTURE_TIME, result.getDepartureTime());
-        assertEquals(DROP_OFF_TYPE, result.getDropOffType());
+        assertEquals(DROP_OFF_TYPE, result.getDropOffType().getGtfsCode());
         assertEquals(FARE_PERIOD_ID, result.getFarePeriodId());
-        assertEquals(PICKUP_TYPE, result.getPickupType());
+        assertEquals(PICKUP_TYPE, result.getPickupType().getGtfsCode());
         assertEquals(ROUTE_SHORT_NAME, result.getRouteShortName());
         assertEquals(SHAPE_DIST_TRAVELED, result.getShapeDistTraveled(), 0.0001d);
         assertNotNull(result.getStop());
@@ -111,9 +112,9 @@ public class StopTimesMapperTest {
 
         assertFalse(result.isArrivalTimeSet());
         assertFalse(result.isDepartureTimeSet());
-        assertEquals(0, result.getDropOffType());
+        assertEquals(0, result.getDropOffType().getGtfsCode());
         assertNull(result.getFarePeriodId());
-        assertEquals(0, result.getPickupType());
+        assertEquals(0, result.getPickupType().getGtfsCode());
         assertNull(result.getRouteShortName());
         assertFalse(result.isShapeDistTraveledSet());
         assertNull(result.getStop());
