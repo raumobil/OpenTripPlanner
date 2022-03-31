@@ -1065,11 +1065,11 @@ public class RoutingRequest implements AutoCloseable, Cloneable, Serializable {
      * @return GenericLocation : location with coordinates
      */
     private GenericLocation returnLocationForBikeRentalStation(String id, Router router) {
-         return router.graph.getBikerentalStationService().getBikeRentalStations()
+         return router.graph.getVehicleRentalStationService().getVehicleRentalStations()
                     .stream()
-                    .filter(bikeRentalStation -> bikeRentalStation.id.equals(id))
+                    .filter(bikeRentalStation -> bikeRentalStation.id.getId().equals(id))
                     .findFirst()
-                    .map(bikeRentalStation -> new GenericLocation(bikeRentalStation.y, bikeRentalStation.x))
+                    .map(bikeRentalStation -> new GenericLocation(bikeRentalStation.latitude, bikeRentalStation.longitude))
                     .orElse(new GenericLocation(null, null));
     }
 
