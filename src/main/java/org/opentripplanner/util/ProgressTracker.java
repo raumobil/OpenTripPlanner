@@ -1,6 +1,7 @@
 package org.opentripplanner.util;
 
 import org.opentripplanner.common.LoggingUtil;
+import org.opentripplanner.util.time.DurationUtils;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -10,8 +11,6 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import static org.opentripplanner.transit.raptor.util.TimeUtils.durationToStr;
-
 
 /**
  * The progress tracker notify the caller based a time interval.
@@ -20,7 +19,7 @@ import static org.opentripplanner.transit.raptor.util.TimeUtils.durationToStr;
  * 'timer' prevent notification unless a minimum amount of time is passed since last time the
  * caller was notified. The quiet period is set to 5 seconds.
  * <p>
- * There is also a 'minBlockSize' witch prevent the tracker of calling the
+ * There is also a 'minBlockSize' which prevent the tracker of calling the
  * {@link System#currentTimeMillis()} for each step, instead the timer is checked once for each
  * block of steps. This make the progress step up in regular, nice to read, chunks too.
  * <p>
@@ -79,7 +78,7 @@ public class ProgressTracker {
      * Track progress for the given action.
      * @param actionName the action name to include in the notification strings.
      * @param minBlockSize the minimum number of steps between each time check. A reasonably value
-     *                     is to use the number of steps witch would take approximately 1 second.
+     *                     is to use the number of steps which would take approximately 1 second.
      *                     Set this lower if the time variation for each step is big.
      * @param size The expected number the step method is called. If negative
      *             the size is considered unknown.
@@ -93,7 +92,7 @@ public class ProgressTracker {
      *
      * @param actionName the action name to include in the notification strings.
      * @param minBlockSize the minimum number of steps between each time check. A reasonably value
-     *                     is to use the number of steps witch would take approximately 1 second.
+     *                     is to use the number of steps which would take approximately 1 second.
      *                     Set this lower if the time variation for each step is big.
      * @param size The expected number the step method is called. If negative
      *             the size is considered unknown.
@@ -119,7 +118,7 @@ public class ProgressTracker {
      *
      * @param actionName the action name to include in the notification strings.
      * @param minBlockSize the minimum number of steps between each time check. A reasonably value
-     *                     is to use the number of steps witch would take approximately 1 second.
+     *                     is to use the number of steps which would take approximately 1 second.
      *                     Set this lower if the time variation for each step is big.
      * @param size The expected number the step method is called. If negative
      *             the size is considered unknown.
@@ -232,9 +231,9 @@ public class ProgressTracker {
         Duration totalTime = Duration.between(startTime, Instant.now());
         // Add 1 millisecond to prevent / by zero.
         String stepsPerSecond = toStr(Math.round(1000d * ii / (totalTime.toMillis()+1)));
-        return String.format(
-                "%s progress tracking complete. %s done in %s (%s pr second). ",
-                actionName, toStr(ii), durationToStr(totalTime), stepsPerSecond
+      return String.format(
+                "%s progress tracking complete. %s done in %s (%s per second). ",
+                actionName, toStr(ii), DurationUtils.durationToStr(totalTime), stepsPerSecond
         );
     }
 

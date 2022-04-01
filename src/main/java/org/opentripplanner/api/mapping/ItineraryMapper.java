@@ -11,8 +11,8 @@ import java.util.stream.Collectors;
 public class ItineraryMapper {
     private final LegMapper legMapper;
 
-    public ItineraryMapper(Locale locale) {
-        this.legMapper = new LegMapper(locale);
+    public ItineraryMapper(Locale locale, boolean addIntermediateStops) {
+        this.legMapper = new LegMapper(locale, addIntermediateStops);
     }
 
     public List<ApiItinerary> mapItineraries(Collection<Itinerary> domain) {
@@ -31,11 +31,12 @@ public class ItineraryMapper {
         api.transitTime = domain.transitTimeSeconds;
         api.waitingTime = domain.waitingTimeSeconds;
         api.walkDistance = domain.nonTransitDistanceMeters;
-        api.walkLimitExceeded = domain.nonTransitLimitExceeded;
+        api.generalizedCost = domain.generalizedCost;
         api.elevationLost = domain.elevationLost;
         api.elevationGained = domain.elevationGained;
         api.transfers = domain.nTransfers;
         api.tooSloped = domain.tooSloped;
+        api.arrivedAtDestinationWithRentedBicycle = domain.arrivedAtDestinationWithRentedVehicle;
         api.fare = domain.fare;
         api.legs = legMapper.mapLegs(domain.legs);
         api.systemNotices = SystemNoticeMapper.mapSystemNotices(domain.systemNotices);

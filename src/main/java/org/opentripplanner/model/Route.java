@@ -1,25 +1,27 @@
 /* This file is based on code copied from project OneBusAway, see the LICENSE file for further information. */
 package org.opentripplanner.model;
 
-public final class Route extends TransitEntity<FeedScopedId> {
+public final class Route extends TransitEntity {
 
     private static final long serialVersionUID = 1L;
 
     private static final int MISSING_VALUE = -999;
 
-    private FeedScopedId id;
-
     private Agency agency;
 
     private Operator operator;
+
+    private Branding branding;
 
     private String shortName;
 
     private String longName;
 
-    private int type;
-
     private TransitMode mode;
+
+    // TODO: consolidate these
+    private Integer gtfsType;
+    private String netexSubmode;
 
     private String desc;
 
@@ -29,23 +31,22 @@ public final class Route extends TransitEntity<FeedScopedId> {
 
     private String textColor;
 
-    @Deprecated private int routeBikesAllowed = 0;
-
-    /**
-     * 0 = unknown / unspecified, 1 = bikes allowed, 2 = bikes NOT allowed
-     */
-    private int bikesAllowed = 0;
+    private BikeAccess bikesAllowed = BikeAccess.UNKNOWN;
 
     private int sortOrder = MISSING_VALUE;
 
-    private String brandingUrl;
+    private String flexibleLineType;
 
-    public FeedScopedId getId() {
-        return id;
+    public Route(FeedScopedId id) {
+        super(id);
     }
 
-    public void setId(FeedScopedId id) {
-        this.id = id;
+    public Branding getBranding() {
+        return branding;
+    }
+
+    public void setBranding(Branding branding) {
+        this.branding = branding;
     }
 
     /**
@@ -96,12 +97,12 @@ public final class Route extends TransitEntity<FeedScopedId> {
         this.desc = desc;
     }
 
-    public int getType() {
-        return type;
+    public Integer getGtfsType() {
+        return gtfsType;
     }
 
-    public void setType(int type) {
-        this.type = type;
+    public void setGtfsType(int gtfsType) {
+        this.gtfsType = gtfsType;
     }
 
     public TransitMode getMode() {
@@ -136,28 +137,11 @@ public final class Route extends TransitEntity<FeedScopedId> {
         this.textColor = textColor;
     }
 
-    @Deprecated
-    public int getRouteBikesAllowed() {
-        return routeBikesAllowed;
-    }
-
-    @Deprecated
-    public void setRouteBikesAllowed(int routeBikesAllowed) {
-        this.routeBikesAllowed = routeBikesAllowed;
-    }
-
-    /**
-     * @return 0 = unknown / unspecified, 1 = bikes allowed, 2 = bikes NOT allowed
-     */
-    public int getBikesAllowed() {
+    public BikeAccess getBikesAllowed() {
         return bikesAllowed;
     }
 
-    /**
-     * @param bikesAllowed 0 = unknown / unspecified, 1 = bikes allowed, 2 = bikes
-     *          NOT allowed
-     */
-    public void setBikesAllowed(int bikesAllowed) {
+    public void setBikesAllowed(BikeAccess bikesAllowed) {
         this.bikesAllowed = bikesAllowed;
     }
 
@@ -173,23 +157,32 @@ public final class Route extends TransitEntity<FeedScopedId> {
         this.sortOrder = sortOrder;
     }
 
-    public String getBrandingUrl() {
-        return brandingUrl;
+    /**
+     * Pass-through information from NeTEx FlexibleLineType. This information is not used by OTP.
+     */
+    public String getFlexibleLineType() {
+        return flexibleLineType;
     }
 
-    public void setBrandingUrl(String brandingUrl) {
-        this.brandingUrl = brandingUrl;
+    public void setFlexibleLineType(String flexibleLineType) {
+        this.flexibleLineType = flexibleLineType;
     }
 
     /** @return the route's short name, or the long name if the short name is null. */
     public String getName() {
-        if (shortName != null)
-            return shortName;
-        return longName;
+        return  shortName != null ? shortName : longName;
     }
 
     @Override
     public String toString() {
-        return "<Route " + id + " " + shortName + ">";
+        return "<Route " + getId() + " " + getName() + ">";
+    }
+
+    public String getNetexSubmode() {
+        return netexSubmode;
+    }
+
+    public void setNetexSubmode(String netexSubmode) {
+        this.netexSubmode = netexSubmode;
     }
 }

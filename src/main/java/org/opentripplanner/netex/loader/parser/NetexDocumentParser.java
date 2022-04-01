@@ -1,6 +1,9 @@
 package org.opentripplanner.netex.loader.parser;
 
-import org.opentripplanner.netex.loader.NetexImportDataIndex;
+import java.util.Collection;
+import java.util.List;
+import javax.xml.bind.JAXBElement;
+import org.opentripplanner.netex.index.NetexEntityIndex;
 import org.rutebanken.netex.model.Common_VersionFrameStructure;
 import org.rutebanken.netex.model.CompositeFrame;
 import org.rutebanken.netex.model.GeneralFrame;
@@ -15,10 +18,6 @@ import org.rutebanken.netex.model.VersionFrameDefaultsStructure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.bind.JAXBElement;
-import java.util.Collection;
-import java.util.List;
-
 /**
  * This is the root parser for a Netex XML Document. The parser ONLY read the document and
  * populate the index with entities. The parser is only responsible for populating the
@@ -28,9 +27,9 @@ import java.util.List;
 public class NetexDocumentParser {
     private static final Logger LOG = LoggerFactory.getLogger(NetexDocumentParser.class);
 
-    private final NetexImportDataIndex netexIndex;
+    private final NetexEntityIndex netexIndex;
 
-    private NetexDocumentParser(NetexImportDataIndex netexIndex) {
+    private NetexDocumentParser(NetexEntityIndex netexIndex) {
         this.netexIndex = netexIndex;
     }
 
@@ -38,8 +37,12 @@ public class NetexDocumentParser {
      * This static method create a new parser and parse the document. The result is added
      * to given index for further processing.
      */
-    public static void parseAndPopulateIndex(NetexImportDataIndex index, PublicationDeliveryStructure doc) {
+    public static void parseAndPopulateIndex(NetexEntityIndex index, PublicationDeliveryStructure doc) {
         new NetexDocumentParser(index).parse(doc);
+    }
+
+    public static void finnishUp() {
+        ServiceFrameParser.logSummary();
     }
 
     /** Top level parse method - parses the document. */
@@ -59,14 +62,16 @@ public class NetexDocumentParser {
         } else if(value instanceof ServiceCalendarFrame) {
             parse((ServiceCalendarFrame) value, new ServiceCalendarFrameParser());
         } else if(value instanceof TimetableFrame) {
-            parse((TimetableFrame) value, new TimeTableFrameParser(netexIndex.journeyPatternsById));
+            parse((TimetableFrame) value, new TimeTableFrameParser());
         } else if(value instanceof ServiceFrame) {
-            parse((ServiceFrame) value, new ServiceFrameParser(netexIndex.quayById));
+            parse((ServiceFrame) value, new ServiceFrameParser(
+                netexIndex.flexibleStopPlaceById
+            ));
         }  else if (value instanceof SiteFrame) {
             parse((SiteFrame) value, new SiteFrameParser());
         } else if (value instanceof CompositeFrame) {
             // We recursively parse composite frames and content until there
-            // is no more nested frames - this is accepting documents witch
+            // is no more nested frames - this is accepting documents which
             // are not withing the specification, but we leave this for the
             // document schema validation - not a OTP responsibility
             parseCompositeFrame((CompositeFrame) value);

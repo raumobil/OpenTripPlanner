@@ -6,7 +6,7 @@ import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 
 import org.locationtech.jts.geom.LineString;
-import java.util.Locale;
+import org.opentripplanner.util.I18NString;
 
 /**
  * An edge that costs nothing to traverse. Used for connecting intersection vertices to the main
@@ -27,7 +27,7 @@ public class FreeEdge extends Edge {
     public State traverse(State s0) {
         StateEditor s1 = s0.edit(this);
         s1.incrementWeight(1);
-        // do not change mode, which means it may be null at the start of a trip
+        s1.setBackMode(null);
         return s1.makeState();
     }
 
@@ -42,13 +42,8 @@ public class FreeEdge extends Edge {
     }
 
     @Override
-    public String getName() {
+    public I18NString getName() {
         return null;
-    }
-
-    @Override
-    public String getName(Locale locale) {
-        return this.getName();
     }
 
     public String toString() {

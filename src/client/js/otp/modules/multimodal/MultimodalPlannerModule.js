@@ -23,7 +23,7 @@ otp.modules.multimodal.MultimodalPlannerModule =
 
     itinWidget  : null,
 
-    showIntermediateStops : false,
+    showIntermediateStops : true,
 
     stopsWidget: false,
 
@@ -66,8 +66,6 @@ otp.modules.multimodal.MultimodalPlannerModule =
         var modeSelector = new otp.widgets.tripoptions.ModeSelector(this.optionsWidget);
         this.optionsWidget.addControl("mode", modeSelector, true);
 
-        modeSelector.addModeControl(new otp.widgets.tripoptions.MaxWalkSelector(this.optionsWidget));
-        modeSelector.addModeControl(new otp.widgets.tripoptions.MaxBikeSelector(this.optionsWidget));
         modeSelector.addModeControl(new otp.widgets.tripoptions.BikeTriangle(this.optionsWidget));
         modeSelector.addModeControl(new otp.widgets.tripoptions.PreferredRoutes(this.optionsWidget));
         modeSelector.addModeControl(new otp.widgets.tripoptions.BannedRoutes(this.optionsWidget));
@@ -78,6 +76,9 @@ otp.modules.multimodal.MultimodalPlannerModule =
         }
         modeSelector.addModeControl(new otp.widgets.tripoptions.DebugItineraryFiltersSelector(this.optionsWidget));
         modeSelector.refreshModeControls();
+
+        this.optionsWidget.addSeparator();
+        this.optionsWidget.addControl("additionalParameters", new otp.widgets.tripoptions.AdditionalTripParameters(this.optionsWidget))
 
         this.optionsWidget.addSeparator();
         this.optionsWidget.addControl("submit", new otp.widgets.tripoptions.Submit(this.optionsWidget));
@@ -109,17 +110,31 @@ otp.modules.multimodal.MultimodalPlannerModule =
         }
         if(restoring && this.restoredItinIndex) {
             this.itinWidget.show();
-            this.itinWidget.updateItineraries(tripPlan.itineraries, tripPlan.queryParams, this.restoredItinIndex);
+            this.itinWidget.updateItineraries(
+                tripPlan.itineraries,
+                tripPlan.queryParams,
+                this.restoredItinIndex,
+                tripPlan.planData.previousPageCursor,
+                tripPlan.planData.nextPageCursor
+            );
             this.restoredItinIndex = null;
         } else  {
             this.itinWidget.show();
-            this.itinWidget.updateItineraries(tripPlan.itineraries, tripPlan.queryParams);
+            this.itinWidget.updateItineraries(
+                tripPlan.itineraries,
+                tripPlan.queryParams,
+                undefined,
+                tripPlan.planData.previousPageCursor,
+                tripPlan.planData.nextPageCursor
+            );
         }
 
         /*if(restoring) {
             this.optionsWidget.restorePlan(tripPlan);
         }*/
-        this.drawItinerary(tripPlan.itineraries[0]);
+        if (tripPlan.itineraries.length > 0) {
+            this.drawItinerary(tripPlan.itineraries[0]);
+        }
     },
 
     restoreTrip : function(queryParams) {

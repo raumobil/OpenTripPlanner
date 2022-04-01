@@ -1,40 +1,39 @@
 package org.opentripplanner.routing.algorithm;
 
-import org.opentripplanner.model.plan.Itinerary;
-import org.opentripplanner.routing.algorithm.filterchain.ItineraryFilter;
-import org.opentripplanner.routing.algorithm.mapping.RaptorPathToItineraryMapper;
-import org.opentripplanner.routing.algorithm.mapping.RoutingRequestToFilterChainMapper;
-import org.opentripplanner.routing.algorithm.mapping.TripPlanMapper;
-import org.opentripplanner.routing.algorithm.raptor.router.street.AccessEgressRouter;
-import org.opentripplanner.routing.algorithm.raptor.router.street.DirectStreetRouter;
-import org.opentripplanner.routing.algorithm.raptor.transit.AccessEgress;
-import org.opentripplanner.routing.algorithm.raptor.transit.TransitLayer;
-import org.opentripplanner.routing.algorithm.raptor.transit.TripSchedule;
-import org.opentripplanner.routing.algorithm.raptor.transit.mappers.RaptorRequestMapper;
-import org.opentripplanner.routing.algorithm.raptor.transit.request.RaptorRoutingRequestTransitData;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.api.response.InputField;
-import org.opentripplanner.routing.api.response.RoutingError;
-import org.opentripplanner.routing.api.response.RoutingErrorCode;
-import org.opentripplanner.routing.api.response.RoutingResponse;
-import org.opentripplanner.routing.api.response.TripSearchMetadata;
-import org.opentripplanner.routing.error.RoutingValidationException;
-import org.opentripplanner.routing.framework.DebugAggregator;
-import org.opentripplanner.routing.services.FareService;
-import org.opentripplanner.standalone.server.Router;
-import org.opentripplanner.transit.raptor.RaptorService;
-import org.opentripplanner.transit.raptor.api.path.Path;
-import org.opentripplanner.transit.raptor.api.request.RaptorRequest;
-import org.opentripplanner.transit.raptor.api.response.RaptorResponse;
-import org.opentripplanner.transit.raptor.rangeraptor.configure.RaptorConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import org.opentripplanner.model.plan.Itinerary;
+import org.opentripplanner.model.plan.PagingSearchWindowAdjuster;
+import org.opentripplanner.routing.algorithm.filterchain.ItineraryListFilterChain;
+import org.opentripplanner.routing.algorithm.mapping.RoutingRequestToFilterChainMapper;
+import org.opentripplanner.routing.algorithm.mapping.RoutingResponseMapper;
+import org.opentripplanner.routing.algorithm.raptoradapter.router.AdditionalSearchDays;
+import org.opentripplanner.routing.algorithm.raptoradapter.router.FilterTransitWhenDirectModeIsEmpty;
+import org.opentripplanner.routing.algorithm.raptoradapter.router.TransitRouter;
+import org.opentripplanner.routing.algorithm.raptoradapter.router.street.DirectFlexRouter;
+import org.opentripplanner.routing.algorithm.raptoradapter.router.street.DirectStreetRouter;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.DateMapper;
+import org.opentripplanner.routing.api.request.RoutingRequest;
+import org.opentripplanner.routing.api.response.RoutingError;
+import org.opentripplanner.routing.api.response.RoutingResponse;
+import org.opentripplanner.routing.error.RoutingValidationException;
+import org.opentripplanner.routing.framework.DebugTimingAggregator;
+import org.opentripplanner.standalone.config.RouterConfig;
+import org.opentripplanner.standalone.server.Router;
+import org.opentripplanner.transit.raptor.api.request.RaptorTuningParameters;
+import org.opentripplanner.transit.raptor.api.request.SearchParams;
+import org.opentripplanner.util.OTPFeature;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Does a complete transit search, including access and egress legs.
@@ -42,232 +41,247 @@ import java.util.List;
  * This class has a request scope, hence the "Worker" name.
  */
 public class RoutingWorker {
-    private static final int NOT_SET = -1;
-
-    /**
-     * The numbers of days before the search date to consider when filtering trips for this search.
-     * This is set to 1 to account for trips starting yesterday and crossing midnight so that they
-     * can be boarded today. If there are trips that last multiple days, this will need to be
-     * increased.
-     */
-    private static final int ADDITIONAL_SEARCH_DAYS_BEFORE_TODAY = 1;
-
-    /**
-     * The number of days after the search date to consider when filtering trips for this search.
-     * This is set to 1 to account for searches today having a search window that crosses midnight
-     * and would also need to board trips starting tomorrow. If a search window that lasts more than
-     * a day is used, this will need to be increased.
-     */
-    private static final int ADDITIONAL_SEARCH_DAYS_AFTER_TODAY = 1;
-
     private static final Logger LOG = LoggerFactory.getLogger(RoutingWorker.class);
 
-    private final RaptorService<TripSchedule> raptorService;
-
     /** An object that accumulates profiling and debugging info for inclusion in the response. */
-    public final DebugAggregator debugAggregator = new DebugAggregator();
+    public final DebugTimingAggregator debugTimingAggregator = new DebugTimingAggregator();
+    public final PagingSearchWindowAdjuster pagingSearchWindowAdjuster;
 
     private final RoutingRequest request;
-    private Instant filterOnLatestDepartureTime = null;
-    private int searchWindowUsedInSeconds = NOT_SET;
+    private final Router router;
+    /**
+     * The transit service time-zero normalized for the current search. All transit times are
+     * relative to a "time-zero". This enables us to use an integer(small memory footprint). The
+     * times are number for seconds past the {@code transitSearchTimeZero}. In the internal model
+     * all times are stored relative to the {@link org.opentripplanner.model.calendar.ServiceDate},
+     * but to be able to compare trip times for different service days we normalize all times by
+     * calculating an offset. Now all times for the selected trip patterns become relative to the
+     * {@code transitSearchTimeZero}.
+     */
+    private final ZonedDateTime transitSearchTimeZero;
+    private SearchParams raptorSearchParamsUsed = null;
     private Itinerary firstRemovedItinerary = null;
+    private final AdditionalSearchDays additionalSearchDays;
 
-    public RoutingWorker(RaptorConfig<TripSchedule> config, RoutingRequest request) {
-        this.debugAggregator.startedCalculating();
-        this.raptorService = new RaptorService<>(config);
+    public RoutingWorker(Router router, RoutingRequest request, ZoneId zoneId) {
+        request.applyPageCursor();
         this.request = request;
+        this.router = router;
+        this.transitSearchTimeZero = DateMapper.asStartOfService(request.getDateTime(), zoneId);
+        this.pagingSearchWindowAdjuster = createPagingSearchWindowAdjuster(router.routerConfig);
+        this.additionalSearchDays = createAdditionalSearchDays(
+                router.routerConfig.raptorTuningParameters(), zoneId, request
+        );
     }
 
-    public RoutingResponse route(Router router) {
-        List<Itinerary> itineraries = new ArrayList<>();
-        List<RoutingError> routingErrors = new ArrayList<>();
+    public RoutingResponse route() {
+        // If no direct mode is set, then we set one.
+        // See {@link FilterTransitWhenDirectModeIsEmpty}
+        var emptyDirectModeHandler = new FilterTransitWhenDirectModeIsEmpty(request.modes);
 
-        this.debugAggregator.finishedPrecalculating();
+        request.modes.directMode = emptyDirectModeHandler.resolveDirectMode();
 
-        // Direct street routing
+        this.debugTimingAggregator.finishedPrecalculating();
+
+        var itineraries = Collections.synchronizedList(new ArrayList<Itinerary>());
+        var routingErrors = Collections.synchronizedSet(new HashSet<RoutingError>());
+
+        if (OTPFeature.ParallelRouting.isOn()) {
+            try {
+                CompletableFuture.allOf(
+                        CompletableFuture.runAsync(() -> routeDirectStreet(itineraries, routingErrors)),
+                        CompletableFuture.runAsync(() -> routeDirectFlex(itineraries, routingErrors)),
+                        CompletableFuture.runAsync(() -> routeTransit(itineraries, routingErrors))
+                ).join();
+            }
+            catch (CompletionException e) {
+                RoutingValidationException.unwrapAndRethrowCompletionException(e);
+            }
+        } else {
+            // Direct street routing
+            routeDirectStreet(itineraries, routingErrors);
+
+            // Direct flex routing
+            routeDirectFlex(itineraries, routingErrors);
+
+            // Transit routing
+            routeTransit(itineraries, routingErrors);
+        }
+
+        debugTimingAggregator.finishedRouting();
+
+        // Filter itineraries
+        ItineraryListFilterChain filterChain = RoutingRequestToFilterChainMapper.createFilterChain(
+            request.getItinerariesSortOrder(),
+            request.itineraryFilters,
+            request.numItineraries,
+            filterOnLatestDepartureTime(),
+            emptyDirectModeHandler.removeWalkAllTheWayResults(),
+            request.maxNumberOfItinerariesCropHead(),
+            it -> firstRemovedItinerary = it
+        );
+
+        List<Itinerary> filteredItineraries = filterChain.filter(itineraries);
+
+        routingErrors.addAll(filterChain.getRoutingErrors());
+
+        if(LOG.isDebugEnabled()) {
+            LOG.debug(
+                    "Return TripPlan with {} filtered itineraries out of {} total.",
+                    filteredItineraries.stream().filter(it -> !it.isFlaggedForDeletion()).count(),
+                    itineraries.size());
+        }
+
+        this.debugTimingAggregator.finishedFiltering();
+
+        // Restore original directMode.
+        request.modes.directMode = emptyDirectModeHandler.originalDirectMode();
+
+        // Adjust the search-window for the next search if the current search-window
+        // is off (too few or too many results found).
+        var searchWindowNextSearch = calculateSearchWindowNextSearch(filteredItineraries);
+
+        return RoutingResponseMapper.map(
+                request,
+                transitSearchTimeZero,
+                raptorSearchParamsUsed,
+                searchWindowNextSearch,
+                firstRemovedItinerary,
+                filteredItineraries,
+                routingErrors,
+                debugTimingAggregator
+        );
+    }
+
+    /**
+     * Filter itineraries away that depart after the latest-departure-time for depart after
+     * search. These itineraries are a result of time-shifting the access leg and is needed for
+     * the raptor to prune the results. These itineraries are often not ideal, but if they
+     * pareto optimal for the "next" window, they will appear when a "next" search is performed.
+     */
+    private Instant filterOnLatestDepartureTime() {
+        if(!request.arriveBy
+            && raptorSearchParamsUsed != null
+            && raptorSearchParamsUsed.isSearchWindowSet()
+            && raptorSearchParamsUsed.isEarliestDepartureTimeSet()
+        ) {
+            int ldt = raptorSearchParamsUsed.earliestDepartureTime()
+                    + raptorSearchParamsUsed.searchWindowInSeconds();
+            return transitSearchTimeZero.plusSeconds(ldt).toInstant();
+        }
+        return null;
+    }
+
+    private void routeDirectStreet(
+            List<Itinerary> itineraries,
+            Collection<RoutingError> routingErrors
+    ) {
+        debugTimingAggregator.startedDirectStreetRouter();
         try {
             itineraries.addAll(DirectStreetRouter.route(router, request));
         } catch (RoutingValidationException e) {
             routingErrors.addAll(e.getRoutingErrors());
+        } finally {
+            debugTimingAggregator.finishedDirectStreetRouter();
+        }
+    }
+
+    private void routeDirectFlex(
+            List<Itinerary> itineraries,
+            Collection<RoutingError> routingErrors
+    ) {
+        if (!OTPFeature.FlexRouting.isOn()) {
+            return;
         }
 
-        this.debugAggregator.finishedDirectStreetRouter();
-
-        // Transit routing
+        debugTimingAggregator.startedDirectFlexRouter();
         try {
-            itineraries.addAll(routeTransit(router));
+            itineraries.addAll(DirectFlexRouter.route(router, request, additionalSearchDays));
         } catch (RoutingValidationException e) {
             routingErrors.addAll(e.getRoutingErrors());
+        } finally {
+            debugTimingAggregator.finishedDirectFlexRouter();
         }
-
-        this.debugAggregator.finishedTransitRouter();
-
-        // Filter itineraries
-        itineraries = filterItineraries(itineraries);
-        LOG.debug("Return TripPlan with {} itineraries", itineraries.size());
-
-        this.debugAggregator.finishedFiltering();
-
-        return new RoutingResponse(
-            TripPlanMapper.mapTripPlan(request, itineraries),
-            createTripSearchMetadata(),
-            routingErrors,
-            debugAggregator
-        );
     }
 
-    private Collection<Itinerary> routeTransit(Router router) {
-        request.setRoutingContext(router.graph);
-        if (request.modes.transitModes.isEmpty()) { return Collections.emptyList(); }
-
-        if (!router.graph.transitFeedCovers(request.dateTime)) {
-            throw new RoutingValidationException(List.of(
-                    new RoutingError(RoutingErrorCode.OUTSIDE_SERVICE_PERIOD, InputField.DATE_TIME)
-            ));
-        }
-
-        TransitLayer transitLayer = request.ignoreRealtimeUpdates
-            ? router.graph.getTransitLayer()
-            : router.graph.getRealtimeTransitLayer();
-
-        RaptorRoutingRequestTransitData requestTransitDataProvider;
-        requestTransitDataProvider = new RaptorRoutingRequestTransitData(
-                transitLayer,
-                request.getDateTime().toInstant(),
-                ADDITIONAL_SEARCH_DAYS_BEFORE_TODAY,
-                ADDITIONAL_SEARCH_DAYS_AFTER_TODAY,
-                request.modes.transitModes,
-                request.rctx.bannedRoutes,
-                request.walkSpeed
-        );
-
-        this.debugAggregator.finishedPatternFiltering();
-
-        // Prepare access/egress transfers
-        Collection<AccessEgress> accessTransfers = AccessEgressRouter.streetSearch(request, false, 2000, transitLayer.getStopIndex());
-        Collection<AccessEgress> egressTransfers = AccessEgressRouter.streetSearch(request, true, 2000, transitLayer.getStopIndex());
-
-        verifyEgressAccess(accessTransfers, egressTransfers);
-
-        this.debugAggregator.finishedAccessEgress();
-
-        // Prepare transit search
-        RaptorRequest<TripSchedule> raptorRequest = RaptorRequestMapper.mapRequest(
-                request,
-                requestTransitDataProvider.getStartOfTime(),
-                accessTransfers,
-                egressTransfers
-        );
-
-        // Route transit
-        RaptorResponse<TripSchedule> transitResponse = raptorService.route(
-            raptorRequest,
-            requestTransitDataProvider
-        );
-
-        LOG.debug("Found {} transit itineraries", transitResponse.paths().size());
-        LOG.debug("Transit search params used: {}", transitResponse.requestUsed().searchParams());
-        this.debugAggregator.finishedRaptorSearch();
-
-        // Create itineraries
-
-        RaptorPathToItineraryMapper itineraryMapper = new RaptorPathToItineraryMapper(
-                transitLayer,
-                requestTransitDataProvider.getStartOfTime(),
-                request
-        );
-        FareService fareService = request.getRoutingContext().graph.getService(FareService.class);
-
-        List<Itinerary> itineraries = new ArrayList<>();
-        for (Path<TripSchedule> path : transitResponse.paths()) {
-            // Convert the Raptor/Astar paths to OTP API Itineraries
-            Itinerary itinerary = itineraryMapper.createItinerary(path);
-            // Decorate the Itineraries with fare information.
-            // Itinerary and Leg are API model classes, lacking internal object references needed for effective
-            // fare calculation. We derive the fares from the internal Path objects and add them to the itinerary.
-            if (fareService != null) {
-                itinerary.fare = fareService.getCost(path, transitLayer);
-            }
-            itineraries.add(itinerary);
-        }
-
-        checkIfTransitConnectionExists(transitResponse);
-
-        // Filter itineraries away that depart after the latest-departure-time for depart after
-        // search. These itineraries is a result of time-shifting the access leg and is needed for
-        // the raptor to prune the results. These itineraries are often not ideal, but if they
-        // pareto optimal for the "next" window, they will appear when a "next" search is performed.
-        searchWindowUsedInSeconds = transitResponse.requestUsed().searchParams().searchWindowInSeconds();
-        if(!request.arriveBy && searchWindowUsedInSeconds > 0) {
-            filterOnLatestDepartureTime = Instant.ofEpochSecond(request.dateTime + searchWindowUsedInSeconds);
-        }
-
-        this.debugAggregator.finishedItineraryCreation();
-
-        return itineraries;
-    }
-
-    private List<Itinerary> filterItineraries(List<Itinerary> itineraries) {
-        ItineraryFilter filterChain = RoutingRequestToFilterChainMapper.createFilterChain(
-            request, filterOnLatestDepartureTime, it -> firstRemovedItinerary = it
-        );
-        return filterChain.filter(itineraries);
-    }
-
-    private void verifyEgressAccess(
-            Collection<?> access,
-            Collection<?> egress
+    private void routeTransit(
+            List<Itinerary> itineraries,
+            Collection<RoutingError> routingErrors
     ) {
-        boolean accessExist = !access.isEmpty();
-        boolean egressExist = !egress.isEmpty();
-
-        if(accessExist && egressExist) { return; }
-
-        List<RoutingError> routingErrors = new ArrayList<>();
-        if(!accessExist) { routingErrors.add(
-            new RoutingError(RoutingErrorCode.NO_STOPS_IN_RANGE, InputField.FROM_PLACE));
-        }
-        if(!egressExist) { routingErrors.add(
-            new RoutingError(RoutingErrorCode.NO_STOPS_IN_RANGE, InputField.TO_PLACE));
-        }
-
-        throw new RoutingValidationException(routingErrors);
-    }
-
-    /**
-     * If no paths or search window is found, we assume there is no transit connection between
-     * the origin and destination.
-     */
-    private void checkIfTransitConnectionExists(RaptorResponse<TripSchedule> response) {
-        int searchWindowUsed = response.requestUsed().searchParams().searchWindowInSeconds();
-        if (searchWindowUsed <= 0 && response.paths().isEmpty()) {
-            throw new RoutingValidationException(List.of(
-                new RoutingError(RoutingErrorCode.NO_TRANSIT_CONNECTION, null)));
+        debugTimingAggregator.startedTransitRouting();
+        try {
+            var transitResults = TransitRouter.route(
+                    request,
+                    router,
+                    transitSearchTimeZero,
+                    additionalSearchDays,
+                    debugTimingAggregator
+            );
+            raptorSearchParamsUsed = transitResults.getSearchParams();
+            itineraries.addAll(transitResults.getItineraries());
+        } catch (RoutingValidationException e) {
+            routingErrors.addAll(e.getRoutingErrors());
+        } finally {
+            debugTimingAggregator.finishedTransitRouter();
         }
     }
 
-    private TripSearchMetadata createTripSearchMetadata() {
-        if(searchWindowUsedInSeconds == NOT_SET) { return null; }
+    private static AdditionalSearchDays createAdditionalSearchDays(
+            RaptorTuningParameters raptorTuningParameters, ZoneId zoneId, RoutingRequest request
+    ) {
+        var searchDateTime = ZonedDateTime.ofInstant(request.getDateTime(), zoneId);
+        var maxWindow = Duration.ofMinutes(
+                raptorTuningParameters
+                        .dynamicSearchWindowCoefficients()
+                        .maxWinTimeMinutes()
+        );
 
-        Instant reqTime = Instant.ofEpochSecond(request.dateTime);
+        return new AdditionalSearchDays(
+                request.arriveBy,
+                searchDateTime,
+                request.searchWindow,
+                maxWindow,
+                request.maxJourneyDuration
+        );
+    }
 
-        if (request.arriveBy) {
-            return TripSearchMetadata.createForArriveBy(
-                reqTime,
-                searchWindowUsedInSeconds,
-                firstRemovedItinerary == null
-                    ? null
-                    : firstRemovedItinerary.endTime().toInstant()
+    private Duration calculateSearchWindowNextSearch(List<Itinerary> itineraries) {
+        // No transit search performed
+        if(raptorSearchParamsUsed == null) { return null; }
+
+        var sw = Duration.ofSeconds(raptorSearchParamsUsed.searchWindowInSeconds());
+
+        // SearchWindow cropped -> decrease search-window
+        if(firstRemovedItinerary != null) {
+            Instant swStartTime = searchStartTime().plusSeconds(raptorSearchParamsUsed.earliestDepartureTime());
+            boolean cropSWHead = request.doCropSearchWindowAtTail();
+            Instant rmItineraryStartTime = firstRemovedItinerary.startTime().toInstant();
+
+            return pagingSearchWindowAdjuster.decreaseSearchWindow(
+                    sw, swStartTime, rmItineraryStartTime, cropSWHead
             );
         }
+        // (num-of-itineraries found <= numItineraries)  ->  increase or keep search-window
         else {
-            return TripSearchMetadata.createForDepartAfter(
-                reqTime,
-                searchWindowUsedInSeconds,
-                firstRemovedItinerary == null
-                    ? null
-                    : firstRemovedItinerary.startTime().toInstant()
-            );
+            int nRequested = request.numItineraries;
+            int nFound = (int) itineraries.stream()
+                    .filter(it -> !it.isFlaggedForDeletion() && it.hasTransit())
+                    .count();
+
+            return pagingSearchWindowAdjuster.increaseOrKeepSearchWindow(sw, nRequested, nFound);
         }
+    }
+
+    private Instant searchStartTime() {
+        return transitSearchTimeZero.toInstant();
+    }
+
+    private PagingSearchWindowAdjuster createPagingSearchWindowAdjuster(RouterConfig routerConfig) {
+        var c = routerConfig.raptorTuningParameters().dynamicSearchWindowCoefficients();
+        return new PagingSearchWindowAdjuster(
+                c.minWinTimeMinutes(),
+                c.maxWinTimeMinutes(),
+                routerConfig.transitTuningParameters().pagingSearchWindowAdjustments()
+        );
     }
 }

@@ -29,11 +29,7 @@ public class GtfsBundle {
 
     private CsvInputSource csvInputSource;
 
-    private Boolean defaultBikesAllowed = true;
-
-    private boolean transfersTxtDefinesStationPaths = false;
-
-    /** 
+    /**
      * Create direct transfers between the constituent stops of each parent station.
      * This is different from "linking stops to parent stations" below.
      */
@@ -45,18 +41,11 @@ public class GtfsBundle {
      */
     public boolean linkStopsToParentStations = false;
 
-    private Map<String, String> agencyIdMappings = new HashMap<String, String>();
-
     public int subwayAccessTime;
 
     private double maxStopToShapeSnapDistance = 150;
 
     public int maxInterlineDistance;
-
-    public Boolean useCached = null; // null means use global default from GtfsGB || true
-
-    public File cacheDirectory = null; // null means use default from GtfsGB || system temp dir 
-
 
     /** Used by unit tests */
     public GtfsBundle(File gtfsFile) {
@@ -120,38 +109,6 @@ public class GtfsBundle {
 
     public void setFeedId(GtfsFeedId feedId) {
         this.feedId = feedId;
-    }
-
-    /**
-     * When a trip doesn't contain any bicycle accessibility information, should taking a bike
-     * along a transit trip be permitted?
-     * A trip doesn't contain bicycle accessibility information if both route_short_name and
-     * trip_short_name contain missing/0 values.
-     */
-    public Boolean getDefaultBikesAllowed() {
-        return defaultBikesAllowed;
-    }
-
-    public void setDefaultBikesAllowed(Boolean defaultBikesAllowed) {
-        this.defaultBikesAllowed = defaultBikesAllowed;
-    }
-
-    /**
-     * Transfers.txt usually specifies where the transit operator prefers people to transfer, 
-     * due to schedule structure and other factors.
-     * 
-     * However, in systems like the NYC subway system, transfers.txt can partially substitute 
-     * for the missing pathways.txt file.  In this case, transfer edges will be created between
-     * stops where transfers are defined.
-     * 
-     * @return
-     */
-    public boolean doesTransfersTxtDefineStationPaths() {
-        return transfersTxtDefinesStationPaths;
-    }
-
-    public void setTransfersTxtDefinesStationPaths(boolean transfersTxtDefinesStationPaths) {
-        this.transfersTxtDefinesStationPaths = transfersTxtDefinesStationPaths;
     }
 
     public void checkInputs() {

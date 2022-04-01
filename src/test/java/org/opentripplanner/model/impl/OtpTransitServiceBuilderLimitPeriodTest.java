@@ -2,7 +2,9 @@ package org.opentripplanner.model.impl;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.opentripplanner.model.Direction;
 import org.opentripplanner.model.FeedScopedId;
+import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.Route;
 import org.opentripplanner.model.Stop;
 import org.opentripplanner.model.StopPattern;
@@ -14,7 +16,6 @@ import org.opentripplanner.model.calendar.ServiceCalendar;
 import org.opentripplanner.model.calendar.ServiceCalendarDate;
 import org.opentripplanner.model.calendar.ServiceDate;
 import org.opentripplanner.model.calendar.ServiceDateInterval;
-import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.trippattern.Deduplicator;
 import org.opentripplanner.routing.trippattern.TripTimes;
 
@@ -51,7 +52,7 @@ public class OtpTransitServiceBuilderLimitPeriodTest {
 
     private static final Deduplicator DEDUPLICATOR = new Deduplicator();
 
-    private final Route route = new Route();
+    private final Route route = new Route(newId());
 
     private final Trip tripCSIn = createTrip("TCalIn", SERVICE_C_IN);
     private final Trip tripCSOut = createTrip("TCalOut", SERVICE_C_OUT);
@@ -91,8 +92,7 @@ public class OtpTransitServiceBuilderLimitPeriodTest {
         subject.getStops().add(STOP_2);
 
         // Add Route
-        route.setId(newId());
-        route.setType(3);
+        route.setGtfsType(3);
         route.setMode(TransitMode.BUS);
         subject.getRoutes().add(route);
 
@@ -100,11 +100,11 @@ public class OtpTransitServiceBuilderLimitPeriodTest {
         subject.getTripsById().addAll(List.of(tripCSIn, tripCSOut, tripCSDIn, tripCSDOut));
 
         // Pattern with trips that is partially deleted later
-        patternInT1 = createTripPattern(List.of(tripCSIn, tripCSOut));
+        patternInT1 = createTripPattern("P1", List.of(tripCSIn, tripCSOut));
         // Pattern with trip that is inside period
-        patternInT2 = createTripPattern(List.of(tripCSDIn));
+        patternInT2 = createTripPattern("P2", List.of(tripCSDIn));
         // Pattern with trip outside limiting period - pattern is deleted later
-        TripPattern patternOut = createTripPattern(List.of(tripCSDOut));
+        TripPattern patternOut = createTripPattern("P3", List.of(tripCSDOut));
 
         subject.getTripPatterns().put(STOP_PATTERN, patternInT1);
         subject.getTripPatterns().put(STOP_PATTERN, patternInT2);
@@ -118,10 +118,10 @@ public class OtpTransitServiceBuilderLimitPeriodTest {
         assertEquals(2, subject.getCalendarDates().size());
         assertEquals(4, subject.getTripsById().size());
         assertEquals(3, subject.getTripPatterns().get(STOP_PATTERN).size());
-        assertEquals(2, patternInT1.getTrips().size());
-        assertEquals(2, patternInT1.scheduledTimetable.tripTimes.size());
-        assertEquals(1, patternInT2.getTrips().size());
-        assertEquals(1, patternInT2.scheduledTimetable.tripTimes.size());
+        assertEquals(2, patternInT1.scheduledTripsAsStream().count());
+        assertEquals(2, patternInT1.getScheduledTimetable().getTripTimes().size());
+        assertEquals(1, patternInT2.scheduledTripsAsStream().count());
+        assertEquals(1, patternInT2.getScheduledTimetable().getTripTimes().size());
 
         // Limit service to last half of month
         subject.limitServiceDays(new ServiceDateInterval(D2, D3));
@@ -137,7 +137,7 @@ public class OtpTransitServiceBuilderLimitPeriodTest {
         assertEquals(dates.toString(), SERVICE_D_IN, dates.get(0).getServiceId());
 
         // Verify trips
-        EntityById<FeedScopedId, Trip> trips = subject.getTripsById();
+        EntityById<Trip> trips = subject.getTripsById();
         assertEquals(trips.toString(), 2, trips.size());
         assertTrue(trips.toString(), trips.containsKey(tripCSIn.getId()));
         assertTrue(trips.toString(), trips.containsKey(tripCSDIn.getId()));
@@ -150,32 +150,27 @@ public class OtpTransitServiceBuilderLimitPeriodTest {
 
 
         // Verify trips in pattern (one trip is removed from patternInT1)
-        assertEquals(1, patternInT1.getTrips().size());
-        assertEquals(tripCSIn, patternInT1.getTrips().get(0));
+        assertEquals(1, patternInT1.scheduledTripsAsStream().count());
+        assertEquals(tripCSIn, patternInT1.scheduledTripsAsStream().findFirst().get());
 
         // Verify trips in pattern is unchanged (one trip)
-        assertEquals(1, patternInT2.getTrips().size());
+        assertEquals(1, patternInT2.scheduledTripsAsStream().count());
 
         // Verify scheduledTimetable trips (one trip is removed from patternInT1)
-        assertEquals(1, patternInT1.scheduledTimetable.tripTimes.size());
-        assertEquals(tripCSIn, patternInT1.scheduledTimetable.tripTimes.get(0).trip);
+        assertEquals(1, patternInT1.getScheduledTimetable().getTripTimes().size());
+        assertEquals(tripCSIn, patternInT1.getScheduledTimetable().getTripTimes().get(0).getTrip());
 
         // Verify scheduledTimetable trips in pattern is unchanged (one trip)
-        assertEquals(1, patternInT2.scheduledTimetable.tripTimes.size());
+        assertEquals(1, patternInT2.getScheduledTimetable().getTripTimes().size());
     }
 
-    private TripPattern createTripPattern(Collection<Trip> trips) {
-        TripPattern p = new TripPattern(route, STOP_PATTERN);
-        p.setId(
-                new FeedScopedId(
-                        FEED_ID,
-                        trips.stream()
-                                .map(t -> t.getId().getId())
-                                .collect(Collectors.joining(":")
-                        )
-                )
+    private TripPattern createTripPattern(String id, Collection<Trip> trips) {
+        FeedScopedId patternId = new FeedScopedId(FEED_ID,
+            trips.stream().map(t -> t.getId().getId()).collect(Collectors.joining(":"))
         );
-        p.name = "Pattern";
+        TripPattern p = new TripPattern(patternId,  route, STOP_PATTERN);
+
+        p.setName("Pattern");
         for (Trip trip : trips) {
             p.add(new TripTimes(trip, STOP_TIMES, DEDUPLICATOR));
         }
@@ -193,10 +188,9 @@ public class OtpTransitServiceBuilderLimitPeriodTest {
     }
 
     private Trip createTrip(String id, FeedScopedId serviceId) {
-        Trip trip = new Trip();
-        trip.setId(new FeedScopedId(FEED_ID, id));
+        Trip trip = new Trip(new FeedScopedId(FEED_ID, id));
         trip.setServiceId(serviceId);
-        trip.setDirectionId("1");
+        trip.setDirection(Direction.valueOfGtfsCode(1));
         trip.setRoute(route);
         return trip;
     }
@@ -206,8 +200,8 @@ public class OtpTransitServiceBuilderLimitPeriodTest {
         st.setStop(stop);
         st.setDepartureTime(time);
         st.setArrivalTime(time);
-        st.setPickupType(1);
-        st.setDropOffType(1);
+        st.setPickupType(PickDrop.NONE);
+        st.setDropOffType(PickDrop.NONE);
         return st;
     }
 

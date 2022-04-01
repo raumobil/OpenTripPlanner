@@ -1,7 +1,13 @@
 package org.opentripplanner.transit.raptor.rangeraptor.transit;
 
+import java.util.function.IntUnaryOperator;
+import javax.annotation.Nullable;
+import org.opentripplanner.model.base.ToStringBuilder;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTimeTable;
+import org.opentripplanner.transit.raptor.api.transit.RaptorTransferConstraint;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTripSchedule;
+import org.opentripplanner.transit.raptor.api.transit.RaptorTripScheduleBoardOrAlightEvent;
+import org.opentripplanner.transit.raptor.api.transit.RaptorTripScheduleSearch;
 
 
 /**
@@ -19,16 +25,20 @@ import org.opentripplanner.transit.raptor.api.transit.RaptorTripSchedule;
  *
  * @param <T> The TripSchedule type defined by the user of the raptor API.
  */
-public class TripScheduleAlightSearch<T extends RaptorTripSchedule> implements TripScheduleSearch<T> {
+public final class TripScheduleAlightSearch<T extends RaptorTripSchedule>
+        implements RaptorTripScheduleSearch<T>, RaptorTripScheduleBoardOrAlightEvent<T> {
+    private static final int NOT_SET = -1;
+
     private final int nTripsBinarySearchThreshold;
     private final RaptorTimeTable<T> timeTable;
     private final int nTrips;
 
     private int latestAlightTime;
     private int stopPositionInPattern;
+    private IntUnaryOperator arrivalTimes;
 
     private T candidateTrip;
-    private int candidateTripIndex;
+    private int candidateTripIndex = NOT_SET;
 
     TripScheduleAlightSearch(int scheduledTripBinarySearchThreshold, RaptorTimeTable<T> timeTable) {
         this.nTripsBinarySearchThreshold = scheduledTripBinarySearchThreshold;
@@ -36,47 +46,59 @@ public class TripScheduleAlightSearch<T extends RaptorTripSchedule> implements T
         this.nTrips = timeTable.numberOfTripSchedules();
     }
 
+
+    /* TripScheduleBoardOrAlightEvent implementation using fly-weight pattern */
+
     @Override
-    public T getCandidateTrip() {
+    public T getTrip() {
         return candidateTrip;
     }
 
     @Override
-    public int getCandidateTripIndex() {
+    public int getTripIndex() {
         return candidateTripIndex;
     }
 
     @Override
-    public int getCandidateTripTime() {
+    public int getTime() {
         return candidateTrip.arrival(stopPositionInPattern);
     }
 
-    /**
-     * Find the last trip arriving at the given stop BEFORE the given {@code latestAlightTime}.
-     * This is the same as calling {@link #search(int, int, int)} with {@code tripIndexLowerBound: -1}.
-     *
-     * @see #search(int, int, int)
-     */
-    public boolean search(int latestAlightTime, int stopPositionInPattern) {
-        return search(latestAlightTime, stopPositionInPattern, -1);
+    @Override
+    public int getStopPositionInPattern() {
+        return stopPositionInPattern;
     }
 
+    @Override
+    public RaptorTransferConstraint getTransferConstraint() {
+        return RaptorTransferConstraint.REGULAR_TRANSFER;
+    }
+
+
+    /* TripScheduleSearch implementation */
+
     /**
-     * Find the last trip leaving from the given stop BEFORE the the {@code latestAlightTime}, but after the
-     * given trip ({@code tripIndexLowerBound}).
+     * Find the last trip leaving from the given stop BEFORE the the {@code latestAlightTime}, but
+     * after the given trip ({@code tripIndexLowerBound}).
      *
      * @param latestAlightTime      The latest acceptable alight time (exclusive).
      * @param stopPositionInPattern The stop to board.
      * @param tripIndexLowerBound   Upper bound for trip index to search for (exclusive).
      */
-    public boolean search(int latestAlightTime, int stopPositionInPattern, int tripIndexLowerBound) {
+    @Override
+    public RaptorTripScheduleBoardOrAlightEvent<T> search(
+            int latestAlightTime,
+            int stopPositionInPattern,
+            int tripIndexLowerBound
+    ) {
         this.latestAlightTime = latestAlightTime;
         this.stopPositionInPattern = stopPositionInPattern;
+        this.arrivalTimes = timeTable.getArrivalTimes(stopPositionInPattern);
         this.candidateTrip = null;
-        this.candidateTripIndex = -1;
+        this.candidateTripIndex = NOT_SET;
 
         // No previous trip is found
-        if (tripIndexLowerBound < 0) {
+        if (tripIndexLowerBound == UNBOUNDED_TRIP_INDEX) {
             if(nTrips > nTripsBinarySearchThreshold) {
                 return findFirstBoardingOptimizedForLargeSetOfTrips();
             }
@@ -90,17 +112,32 @@ public class TripScheduleAlightSearch<T extends RaptorTripSchedule> implements T
         return findBoardingSearchForwardInTime(tripIndexLowerBound + 1);
     }
 
-    private boolean findFirstBoardingOptimizedForLargeSetOfTrips() {
+
+    @Override
+    public String toString() {
+        return ToStringBuilder.of(TripScheduleAlightSearch.class)
+                .addObj("nTrips", nTrips)
+                .addObj("latestAlightTime", latestAlightTime)
+                .addObj("stopPos", stopPositionInPattern)
+                .addObj("tripIndex", candidateTripIndex)
+                .addObj("trip", candidateTrip)
+                .toString();
+    }
+
+
+    /* private methods */
+
+    private RaptorTripScheduleBoardOrAlightEvent<T> findFirstBoardingOptimizedForLargeSetOfTrips() {
         int indexBestGuess = binarySearchForTripIndex();
 
         // Use the best guess from the binary search to look for a candidate trip
         // We can not use upper bound to exit the search. We need to continue
         // until we find a valid trip in service.
-        boolean found = findBoardingSearchForwardInTime(indexBestGuess);
+        var result = findBoardingSearchForwardInTime(indexBestGuess);
 
         // If a valid result is found and we can return
-        if (found) {
-            return true;
+        if (result != null) {
+            return this;
         }
 
         // No trip schedule above the best guess was found. This may happen if enough
@@ -116,23 +153,21 @@ public class TripScheduleAlightSearch<T extends RaptorTripSchedule> implements T
      *
      * @param tripIndexLowerBound The trip index lower bound, where search start (inclusive).
      */
-    private boolean findBoardingSearchForwardInTime(int tripIndexLowerBound) {
+    @Nullable
+    private RaptorTripScheduleBoardOrAlightEvent<T> findBoardingSearchForwardInTime(int tripIndexLowerBound) {
         for (int i = tripIndexLowerBound; i < nTrips;  ++i) {
-            T trip = timeTable.getTripSchedule(i);
-
-            final int arrival = trip.arrival(stopPositionInPattern);
-
-            if (arrival <= latestAlightTime) {
-                candidateTrip = trip;
+            if (arrivalTimes.applyAsInt(i) <= latestAlightTime) {
                 candidateTripIndex = i;
             } else {
-                // this trip arrives too early. We can break out of the loop since
+                // this trip arrives too late. We can break out of the loop since
                 // trips are sorted by departure time (trips in given schedule)
                 // Trips passing another trip is not accounted for if both are in service.
-                return candidateTrip != null;
+                break;
             }
         }
-        return candidateTrip != null;
+        if (candidateTripIndex == NOT_SET) { return null; }
+        candidateTrip = timeTable.getTripSchedule(candidateTripIndex);
+        return this;
     }
 
     /**
@@ -141,19 +176,18 @@ public class TripScheduleAlightSearch<T extends RaptorTripSchedule> implements T
      *
      * @param tripIndexUpperBound The trip index upper bound, where search end (exclusive).
      */
-    private boolean findBoardingSearchBackwardsInTime(final int tripIndexUpperBound) {
+    @Nullable
+    private RaptorTripScheduleBoardOrAlightEvent<T> findBoardingSearchBackwardsInTime(
+            final int tripIndexUpperBound
+    ) {
         for (int i = tripIndexUpperBound-1; i >=0; --i) {
-            T trip = timeTable.getTripSchedule(i);
-
-            final int arrival = trip.arrival(stopPositionInPattern);
-
-            if (arrival <= latestAlightTime) {
-                candidateTrip = trip;
+            if (arrivalTimes.applyAsInt(i) <= latestAlightTime) {
+                candidateTrip = timeTable.getTripSchedule(i);
                 candidateTripIndex = i;
-                return true;
+                return this;
             }
         }
-        return false;
+        return null;
     }
 
     /**
@@ -173,11 +207,7 @@ public class TripScheduleAlightSearch<T extends RaptorTripSchedule> implements T
         while (upper - lower > nTripsBinarySearchThreshold) {
             int m = (lower + upper) / 2;
 
-            RaptorTripSchedule trip = timeTable.getTripSchedule(m);
-
-            int arrival = trip.arrival(stopPositionInPattern);
-
-            if (arrival <= latestAlightTime) {
+            if (arrivalTimes.applyAsInt(m) <= latestAlightTime) {
                 lower = m;
             }
             else {

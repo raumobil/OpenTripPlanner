@@ -1,7 +1,8 @@
 /* This file is based on code copied from project OneBusAway, see the LICENSE file for further information. */
 package org.opentripplanner.model;
 
-import org.opentripplanner.util.TimeToStringConverter;
+import java.util.List;
+import org.opentripplanner.util.time.TimeUtils;
 
 
 /**
@@ -12,8 +13,6 @@ import org.opentripplanner.util.TimeToStringConverter;
  *           - object structure.
  */
 public final class StopTime implements Comparable<StopTime> {
-
-    private static final long serialVersionUID = 1L;
 
     public static final int MISSING_VALUE = -999;
 
@@ -31,24 +30,32 @@ public final class StopTime implements Comparable<StopTime> {
 
     private String stopHeadsign;
 
+    private List<String> headsignVias;
+
     private String routeShortName;
 
-    private int pickupType;
+    private PickDrop pickupType = PickDrop.SCHEDULED;
 
-    private int dropOffType;
+    private PickDrop dropOffType = PickDrop.SCHEDULED;
 
     private double shapeDistTraveled = MISSING_VALUE;
 
     /** This is a Conveyal extension to the GTFS spec to support Seattle on/off peak fares. */
     private String farePeriodId;
 
-    private int minArrivalTime = MISSING_VALUE;
+    private int flexWindowStart = MISSING_VALUE;
 
-    private int maxDepartureTime = MISSING_VALUE;
+    private int flexWindowEnd = MISSING_VALUE;
 
-    private int continuousPickup;
+    // Disabled by default
+    private int flexContinuousPickup = MISSING_VALUE;
 
-    private int continuousDropOff;
+    // Disabled by default
+    private int flexContinuousDropOff = MISSING_VALUE;
+
+    private BookingInfo dropOffBookingInfo;
+
+    private BookingInfo pickupBookingInfo;
 
     public StopTime() { }
 
@@ -65,10 +72,13 @@ public final class StopTime implements Comparable<StopTime> {
         this.dropOffType = st.dropOffType;
         this.shapeDistTraveled = st.shapeDistTraveled;
         this.farePeriodId = st.farePeriodId;
-        this.minArrivalTime = st.minArrivalTime;
-        this.maxDepartureTime  = st.maxDepartureTime;
-        this.continuousPickup = st.continuousPickup;
-        this.continuousDropOff = st.continuousDropOff;
+        this.flexWindowStart = st.flexWindowStart;
+        this.flexWindowEnd = st.flexWindowEnd;
+        this.flexContinuousPickup = st.flexContinuousPickup;
+        this.flexContinuousDropOff = st.flexContinuousDropOff;
+        this.dropOffBookingInfo = st.dropOffBookingInfo;
+        this.pickupBookingInfo = st.pickupBookingInfo;
+        this.headsignVias = st.headsignVias;
     }
 
     /**
@@ -181,19 +191,19 @@ public final class StopTime implements Comparable<StopTime> {
         this.routeShortName = routeShortName;
     }
 
-    public int getPickupType() {
+    public PickDrop getPickupType() {
         return pickupType;
     }
 
-    public void setPickupType(int pickupType) {
+    public void setPickupType(PickDrop pickupType) {
         this.pickupType = pickupType;
     }
 
-    public int getDropOffType() {
+    public PickDrop getDropOffType() {
         return dropOffType;
     }
 
-    public void setDropOffType(int dropOffType) {
+    public void setDropOffType(PickDrop dropOffType) {
         this.dropOffType = dropOffType;
     }
 
@@ -221,46 +231,83 @@ public final class StopTime implements Comparable<StopTime> {
         this.farePeriodId = farePeriodId;
     }
 
-    public void setMinArrivalTime(int minArrivalTime) {
-        this.minArrivalTime = minArrivalTime;
+    public void setFlexWindowStart(int flexWindowStart) {
+        this.flexWindowStart = flexWindowStart;
     }
 
-    public int getMinArrivalTime() {
-        return minArrivalTime;
+    public int getFlexWindowStart() {
+        return flexWindowStart;
     }
 
-    public void setMaxDepartureTime(int maxDepartureTime) {
-        this.maxDepartureTime = maxDepartureTime;
+    public void setFlexWindowEnd(int flexWindowEnd) {
+        this.flexWindowEnd = flexWindowEnd;
     }
 
-    public int getMaxDepartureTime() {
-        return maxDepartureTime;
+    public int getFlexWindowEnd() {
+        return flexWindowEnd;
     }
 
-    public int getContinuousPickup() {
-        return continuousPickup;
+    public int getFlexContinuousPickup() {
+        return flexContinuousPickup == MISSING_VALUE ? 1 : flexContinuousPickup;
     }
 
-    public void setContinuousPickup(int continuousPickup) {
-        this.continuousPickup = continuousPickup;
+    public void setFlexContinuousPickup(int flexContinuousPickup) {
+        this.flexContinuousPickup = flexContinuousPickup;
     }
 
-    public int getContinuousDropOff() {
-        return continuousDropOff;
+    public int getFlexContinuousDropOff() {
+        return flexContinuousDropOff == MISSING_VALUE ? 1 : flexContinuousDropOff;
     }
 
-    public void setContinuousDropOff(int continuousDropOff) {
-        this.continuousDropOff = continuousDropOff;
+    public void setFlexContinuousDropOff(int flexContinuousDropOff) {
+        this.flexContinuousDropOff = flexContinuousDropOff;
+    }
+
+    public BookingInfo getDropOffBookingInfo() {
+        return dropOffBookingInfo;
+    }
+
+    public void setDropOffBookingInfo(BookingInfo dropOffBookingInfo) {
+        this.dropOffBookingInfo = dropOffBookingInfo;
+    }
+
+    public BookingInfo getPickupBookingInfo() {
+        return pickupBookingInfo;
+    }
+
+    public void setPickupBookingInfo(BookingInfo pickupBookingInfo) {
+        this.pickupBookingInfo = pickupBookingInfo;
+    }
+
+    public List<String> getHeadsignVias() {
+        return headsignVias;
+    }
+
+    public void setHeadsignVias(List<String> headsignVias) {
+        this.headsignVias = headsignVias;
     }
 
     public int compareTo(StopTime o) {
         return this.getStopSequence() - o.getStopSequence();
     }
 
+    public void cancel() {
+        pickupType = PickDrop.CANCELLED;
+        dropOffType = PickDrop.CANCELLED;
+    }
+
+    public void cancelDropOff() {
+        dropOffType = PickDrop.CANCELLED;
+    }
+
+    public void cancelPickup() {
+        pickupType = PickDrop.CANCELLED;
+    }
+
     @Override
     public String toString() {
-        return "StopTime(seq=" + getStopSequence() + " stop=" + getStop().getId() + " trip="
-                + getTrip().getId() + " times=" + TimeToStringConverter.toHH_MM_SS(getArrivalTime())
-                + "-" + TimeToStringConverter.toHH_MM_SS(getDepartureTime()) + ")";
+      return "StopTime(seq=" + getStopSequence() + " stop=" + getStop().getId() + " trip="
+                + getTrip().getId() + " times=" + TimeUtils.timeToStrLong(getArrivalTime())
+                + "-" + TimeUtils.timeToStrLong(getDepartureTime()) + ")";
     }
 }

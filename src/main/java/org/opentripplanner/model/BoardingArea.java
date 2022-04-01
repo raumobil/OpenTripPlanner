@@ -39,7 +39,7 @@ public final class BoardingArea extends StationElement {
   }
 
   /**
-   * Returns the parent stop whis boarding area belongs to.
+   * Returns the parent stop this boarding area belongs to.
    */
   public Stop getParentStop() {
     return parentStop;
@@ -51,6 +51,6 @@ public final class BoardingArea extends StationElement {
 
   @Override
   public String toString() {
-    return "<BoardingArea " + this.id + ">";
+    return "<BoardingArea " + getId() + ">";
   }
 }

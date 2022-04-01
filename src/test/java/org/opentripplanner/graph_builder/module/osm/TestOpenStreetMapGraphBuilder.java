@@ -16,7 +16,6 @@ import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.impl.GraphPathFinder;
-import org.opentripplanner.routing.impl.StreetVertexIndex;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.standalone.config.RouterConfig;
@@ -88,10 +87,10 @@ public class TestOpenStreetMapGraphBuilder extends TestCase {
         assertNotNull(e2);
         assertNotNull(e3);
 
-        assertTrue("name of e1 must be like \"Kamiennog\u00F3rska\"; was " + e1.getName(), e1
-                .getName().contains("Kamiennog\u00F3rska"));
-        assertTrue("name of e2 must be like \"Mariana Smoluchowskiego\"; was " + e2.getName(), e2
-                .getName().contains("Mariana Smoluchowskiego"));
+        assertTrue("name of e1 must be like \"Kamiennog\u00F3rska\"; was " + e1.getDefaultName(), e1
+                .getDefaultName().contains("Kamiennog\u00F3rska"));
+        assertTrue("name of e2 must be like \"Mariana Smoluchowskiego\"; was " + e2.getDefaultName(), e2
+                .getDefaultName().contains("Mariana Smoluchowskiego"));
     }
 
     /**
@@ -166,7 +165,7 @@ public class TestOpenStreetMapGraphBuilder extends TestCase {
         loader.setProvider(provider);
 
         loader.buildGraph(graph, extra);
-        new StreetVertexIndex(graph);
+        graph.getStreetIndex();
 
         Router router = new Router(graph, RouterConfig.DEFAULT);
         router.startup();
@@ -215,8 +214,7 @@ public class TestOpenStreetMapGraphBuilder extends TestCase {
         assertEquals(wayPropertySet.getDataForWay(way), wayPropertySet.defaultProperties);
 
         // add two equal matches: lane only...
-        OSMSpecifier lane_only = new OSMSpecifier();
-        lane_only.addTag("cycleway", "lane");
+        OSMSpecifier lane_only = new OSMSpecifier("cycleway=lane");
 
         WayProperties lane_is_safer = new WayProperties();
         lane_is_safer.setSafetyFeatures(new P2<Double>(1.5, 1.5));
@@ -224,8 +222,7 @@ public class TestOpenStreetMapGraphBuilder extends TestCase {
         wayPropertySet.addProperties(lane_only, lane_is_safer);
 
         // and footway only
-        OSMSpecifier footway_only = new OSMSpecifier();
-        footway_only.addTag("highway", "footway");
+        OSMSpecifier footway_only = new OSMSpecifier("highway=footway");
 
         WayProperties footways_allow_peds = new WayProperties();
         footways_allow_peds.setPermission(StreetTraversalPermission.PEDESTRIAN);
@@ -237,9 +234,7 @@ public class TestOpenStreetMapGraphBuilder extends TestCase {
         assertEquals(dataForWay, lane_is_safer);
 
         // add a better match
-        OSMSpecifier lane_and_footway = new OSMSpecifier();
-        lane_and_footway.addTag("cycleway", "lane");
-        lane_and_footway.addTag("highway", "footway");
+        OSMSpecifier lane_and_footway = new OSMSpecifier("cycleway=lane;highway=footway");
 
         WayProperties safer_and_peds = new WayProperties();
         safer_and_peds.setSafetyFeatures(new P2<Double>(0.75, 0.75));
@@ -305,7 +300,6 @@ public class TestOpenStreetMapGraphBuilder extends TestCase {
         LocalizedString localizedString = new LocalizedString("corner",
                 new String[]{"first", "second"});
 
-        assertEquals("corner of first and second", localizedString.toString());
         assertEquals("Kreuzung first mit second",
                 localizedString.toString(new Locale("de")));
     }

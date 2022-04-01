@@ -1,16 +1,15 @@
 package org.opentripplanner.routing.edgetype;
 
+import java.util.Collection;
+import javax.annotation.Nonnull;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.common.TurnRestriction;
 import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.util.ElevationUtils;
 import org.opentripplanner.routing.vertextype.StreetVertex;
 import org.opentripplanner.routing.vertextype.TemporaryVertex;
 import org.opentripplanner.util.I18NString;
-
-import java.util.List;
 
 
 final public class TemporaryPartialStreetEdge extends StreetWithElevationEdge implements TemporaryEdge {
@@ -20,7 +19,11 @@ final public class TemporaryPartialStreetEdge extends StreetWithElevationEdge im
     /**
      * The edge on which this lies.
      */
-    private StreetEdge parentEdge;
+    private final StreetEdge parentEdge;
+
+    // An explicit geometry is stored, so that it may still be retrieved after this edge is removed
+    // from the graph and the from/to vertices are set to null.
+    private final LineString geometry;
 
 
     /**
@@ -32,12 +35,9 @@ final public class TemporaryPartialStreetEdge extends StreetWithElevationEdge im
             LineString geometry, I18NString name, double length) {
         super(v1, v2, geometry, name, length, parentEdge.getPermission(), false);
         this.parentEdge = parentEdge;
+        this.geometry = super.getGeometry();
         setCarSpeed(parentEdge.getCarSpeed());
         setElevationProfileUsingParents();
-
-        // Assert that the edge is going in the right direction [only possible if vertex is temporary]
-        assertEdgeIsNotDirectedAwayFromTemporaryEndVertex(v1);
-        assertEdgeIsDirectedTowardsTemporaryEndVertex(v2);
     }
 
     /**
@@ -47,17 +47,16 @@ final public class TemporaryPartialStreetEdge extends StreetWithElevationEdge im
      */
     TemporaryPartialStreetEdge(StreetEdge parentEdge, StreetVertex v1, StreetVertex v2,
             LineString geometry, I18NString name) {
-        super(v1, v2, geometry, name, 0, parentEdge.getPermission(), false);
+        super(v1, v2, geometry, name, parentEdge.getPermission(), false);
         this.parentEdge = parentEdge;
+        this.geometry = super.getGeometry();
         setCarSpeed(parentEdge.getCarSpeed());
-
-        // No length is known, so we use the provided geometry to estimate it
-        calculateLengthFromGeometry();
         setElevationProfileUsingParents();
+    }
 
-        // Assert that the edge is going in the right direction [only possible if vertex is temporary]
-        assertEdgeIsNotDirectedAwayFromTemporaryEndVertex(v1);
-        assertEdgeIsDirectedTowardsTemporaryEndVertex(v2);
+    @Override
+    public LineString getGeometry() {
+        return geometry;
     }
 
     /**
@@ -84,12 +83,10 @@ final public class TemporaryPartialStreetEdge extends StreetWithElevationEdge im
         return parentEdge.getInAngle();
     }
 
-    /**
-     * Have the turn restrictions of  their parent.
-     */
+    @Nonnull
     @Override
-    protected List<TurnRestriction> getTurnRestrictions(Graph graph) {
-        return graph.getTurnRestrictions(parentEdge);
+    public Collection<TurnRestriction> getTurnRestrictions() {
+        return parentEdge.getTurnRestrictions();
     }
 
     /**
@@ -131,7 +128,7 @@ final public class TemporaryPartialStreetEdge extends StreetWithElevationEdge im
 
     @Override
     public String toString() {
-        return "TemporaryPartialStreetEdge(" + this.getName() + ", " + this.getFromVertex() + " -> "
+        return "TemporaryPartialStreetEdge(" + this.getDefaultName() + ", " + this.getFromVertex() + " -> "
                 + this.getToVertex() + " length=" + this.getDistanceMeters() + " carSpeed="
                 + this.getCarSpeed() + " parentEdge=" + parentEdge + ")";
     }

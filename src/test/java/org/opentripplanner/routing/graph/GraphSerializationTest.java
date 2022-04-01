@@ -40,9 +40,7 @@ public class GraphSerializationTest {
      */
     @Test
     public void testRoundTripSerializationForGTFSGraph() throws Exception {
-        // This graph does not make an ideal test because it doesn't have any street data.
-        // TODO switch to another graph that has both GTFS and OSM data
-        testRoundTrip(ConstantsForTests.getInstance().getPortlandGraph());
+        testRoundTrip(ConstantsForTests.buildNewPortlandGraph());
     }
 
     /**
@@ -50,7 +48,7 @@ public class GraphSerializationTest {
      */
     @Test
     public void testRoundTripSerializationForNetexGraph() throws Exception {
-        testRoundTrip(ConstantsForTests.getInstance().getMinimalNetexGraph());
+        testRoundTrip(ConstantsForTests.buildNewMinimalNetexGraph());
     }
 
     // Ideally we'd also test comparing two separate but identical complex graphs, built separately from the same inputs.
@@ -72,9 +70,7 @@ public class GraphSerializationTest {
      */
     @Test
     public void compareGraphToItself () {
-        // This graph does not make an ideal test because it doesn't have any street data.
-        // TODO switch to another graph that has both GTFS and OSM data
-        Graph originalGraph = ConstantsForTests.getInstance().getPortlandGraph();
+        Graph originalGraph = ConstantsForTests.getInstance().getCachedPortlandGraph();
         originalGraph.index();
         // We can exclude relatively few classes here, because the object trees are of course perfectly identical.
         // We do skip edge lists - otherwise we trigger a depth-first search of the graph causing a stack overflow.

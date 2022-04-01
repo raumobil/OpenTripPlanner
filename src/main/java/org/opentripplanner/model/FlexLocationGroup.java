@@ -1,22 +1,19 @@
 package org.opentripplanner.model;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.Point;
 import org.opentripplanner.common.geometry.GeometryUtils;
 
-import java.util.HashSet;
-import java.util.Set;
-
 /**
  * A group of stopLocations, which can share a common Stoptime
  */
-public class FlexLocationGroup extends TransitEntity<FeedScopedId> implements StopLocation {
+public class FlexLocationGroup extends TransitEntity implements StopLocation {
 
   private static final long serialVersionUID = 1L;
-
-  private FeedScopedId id;
 
   private String name;
 
@@ -24,14 +21,10 @@ public class FlexLocationGroup extends TransitEntity<FeedScopedId> implements St
 
   private GeometryCollection geometry = new GeometryCollection(null, GeometryUtils.getGeometryFactory());
 
-  @Override
-  public void setId(FeedScopedId id) {
-    this.id = id;
-  }
+  private Point centroid;
 
-  @Override
-  public FeedScopedId getId() {
-    return id;
+  public FlexLocationGroup(FeedScopedId id) {
+    super(id);
   }
 
   public void setName(String name) {
@@ -44,7 +37,12 @@ public class FlexLocationGroup extends TransitEntity<FeedScopedId> implements St
   }
 
   @Override
-  public String getCode() {
+  public String getDescription() {
+    return null;
+  }
+
+  @Override
+  public String getUrl() {
     return null;
   }
 
@@ -53,8 +51,27 @@ public class FlexLocationGroup extends TransitEntity<FeedScopedId> implements St
    */
   @Override
   public WgsCoordinate getCoordinate() {
-    Point centroid = geometry.getCentroid();
     return new WgsCoordinate(centroid.getY(), centroid.getX());
+  }
+
+  @Override
+  public String getFirstZoneAsString() {
+    return null;
+  }
+
+  @Override
+  public Geometry getGeometry() {
+    return geometry;
+  }
+
+  @Override
+  public boolean isPartOfStation() {
+    return false;
+  }
+
+  @Override
+  public boolean isPartOfSameStationAs(StopLocation alternativeStop) {
+    return false;
   }
 
   /**
@@ -76,11 +93,12 @@ public class FlexLocationGroup extends TransitEntity<FeedScopedId> implements St
       envelope.expandBy(100 / xscale, 100);
       newGeometries[numGeometries] = GeometryUtils.getGeometryFactory().toGeometry(envelope);
     } else if (location instanceof FlexStopLocation) {
-      newGeometries[numGeometries] = ((FlexStopLocation) location).getGeometry();
+      newGeometries[numGeometries] = location.getGeometry();
     } else {
       throw new RuntimeException("Unknown location type");
     }
     geometry = new GeometryCollection(newGeometries, GeometryUtils.getGeometryFactory());
+    centroid = geometry.getCentroid();
   }
 
   /**

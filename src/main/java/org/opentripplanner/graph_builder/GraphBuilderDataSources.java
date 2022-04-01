@@ -6,8 +6,8 @@ import org.opentripplanner.datastore.CompositeDataSource;
 import org.opentripplanner.datastore.DataSource;
 import org.opentripplanner.datastore.FileType;
 import org.opentripplanner.datastore.OtpDataStore;
-import org.opentripplanner.standalone.config.CommandLineParameters;
 import org.opentripplanner.standalone.config.BuildConfig;
+import org.opentripplanner.standalone.config.CommandLineParameters;
 import org.opentripplanner.util.OtpAppException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +24,7 @@ import static org.opentripplanner.datastore.FileType.OSM;
 
 /**
  * This is a wrapper around an {@link OtpDataStore} adding the ability to filter
- * witch data source input files should be used and validate the available input files
+ * which data source input files should be used and validate the available input files
  * against the command line parameters set.
  * <p/>
  * After this class is validated the {@link #has(FileType)} method can be used to
@@ -56,7 +56,7 @@ public class GraphBuilderDataSources {
         this.cacheDirectory = cli.cacheDirectory;
         this.outputGraph = getOutputGraph(cli);
 
-        // Select witch files to import
+        // Select which files to import
         include(cli.doBuildStreet() && bc.streets, OSM);
         include(cli.doBuildStreet() && bc.streets, DEM);
         include(cli.doBuildTransit() && bc.transit, GTFS);
@@ -73,7 +73,7 @@ public class GraphBuilderDataSources {
     }
 
     /**
-     * Create a wrapper around the data-store and resolve witch files to
+     * Create a wrapper around the data-store and resolve which files to
      * import and export. Validate these files against the given command line
      * arguments and the graph build parameters.
      */
@@ -123,25 +123,24 @@ public class GraphBuilderDataSources {
     }
 
     private void logSkippedAndSelectedFiles() {
-        LOG.info("Process data sources: {}", String.join(", ", store.getRepositoryDescriptions()));
+        LOG.info("Data source location(s): {}",
+            String.join(", ", store.getRepositoryDescriptions())
+        );
 
         // Sort data input files by type
-        LOG.info("Load files:");
+        LOG.info("Existing files expected to be read or written:");
         for (FileType type : FileType.values()) {
             for (DataSource source : inputData.get(type)) {
-                if (type == FileType.CONFIG) {
-                    LOG.info(BULLET_POINT + source.detailedInfo());
-                }
-                else {
-                    LOG.info(BULLET_POINT + source.detailedInfo());
-                }
+                LOG.info(BULLET_POINT + source.detailedInfo());
             }
         }
 
-        LOG.info("Skip files:");
-        for (FileType type : FileType.values()) {
-            for (DataSource source : skipData.get(type)) {
-                LOG.info(BULLET_POINT + source.detailedInfo());
+        if (!skipData.values().isEmpty()) {
+            LOG.info("Files excluded due to command line switches or unknown type:");
+            for (FileType type : FileType.values()) {
+                for (DataSource source : skipData.get(type)) {
+                    LOG.info(BULLET_POINT + source.detailedInfo());
+                }
             }
         }
     }

@@ -5,7 +5,7 @@ import org.opentripplanner.datastore.DataSource;
 import org.opentripplanner.datastore.FileType;
 import org.opentripplanner.datastore.file.ZipFileDataSource;
 import org.opentripplanner.netex.NetexModule;
-import org.opentripplanner.netex.loader.NetexBundle;
+import org.opentripplanner.netex.NetexBundle;
 import org.opentripplanner.netex.loader.NetexDataSourceHierarchy;
 import org.opentripplanner.standalone.config.BuildConfig;
 
@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * Responsible for dependency injection and creating main NeTEx module
  * objects. This decouple the main classes in the netex module, and serve
- * as a single entry-point to create a {@link NetexModule} witch simplify
+ * as a single entry-point to create a {@link NetexModule} which simplify
  * the code({@link org.opentripplanner.graph_builder.GraphBuilder}) using it.
  * <p>
  * This class inject the build configuration. This way none of the other
@@ -55,10 +55,9 @@ public class NetexConfig {
 
         return new NetexModule(
                 buildParams.netex.netexFeedId,
-                buildParams.parentStopLinking,
-                buildParams.stationTransfers,
                 buildParams.getSubwayAccessTimeSeconds(),
                 buildParams.maxInterlineDistance,
+                buildParams.maxStopToShapeSnapDistance,
                 buildParams.getTransitServicePeriod(),
                 netexBundles
         );
@@ -66,7 +65,12 @@ public class NetexConfig {
 
     /** public to enable testing */
     private NetexBundle netexBundle(CompositeDataSource source) {
-        return new NetexBundle(buildParams.netex.netexFeedId, source, hierarchy(source));
+        return new NetexBundle(
+                buildParams.netex.netexFeedId,
+                source,
+                hierarchy(source),
+                buildParams.netex.ferryIdsNotAllowedForBicycle
+        );
     }
 
     private NetexDataSourceHierarchy hierarchy(CompositeDataSource source){

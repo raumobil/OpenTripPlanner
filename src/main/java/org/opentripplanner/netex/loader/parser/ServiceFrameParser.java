@@ -1,9 +1,21 @@
 package org.opentripplanner.netex.loader.parser;
 
-import org.opentripplanner.netex.loader.NetexImportDataIndex;
-import org.opentripplanner.netex.loader.util.ReadOnlyHierarchicalVersionMapById;
+import static org.opentripplanner.util.logging.MaxCountLogger.maxCount;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import javax.xml.bind.JAXBElement;
+import org.opentripplanner.netex.index.NetexEntityIndex;
+import org.opentripplanner.netex.index.api.ReadOnlyHierarchicalMapById;
+import org.opentripplanner.util.OTPFeature;
+import org.opentripplanner.util.logging.MaxCountLogger;
 import org.rutebanken.netex.model.DestinationDisplay;
 import org.rutebanken.netex.model.DestinationDisplaysInFrame_RelStructure;
+import org.rutebanken.netex.model.FlexibleLine;
+import org.rutebanken.netex.model.FlexibleStopAssignment;
+import org.rutebanken.netex.model.FlexibleStopPlace;
 import org.rutebanken.netex.model.GroupOfLines;
 import org.rutebanken.netex.model.GroupsOfLinesInFrame_RelStructure;
 import org.rutebanken.netex.model.JourneyPattern;
@@ -11,8 +23,8 @@ import org.rutebanken.netex.model.JourneyPatternsInFrame_RelStructure;
 import org.rutebanken.netex.model.Line;
 import org.rutebanken.netex.model.LinesInFrame_RelStructure;
 import org.rutebanken.netex.model.Network;
+import org.rutebanken.netex.model.NetworksInFrame_RelStructure;
 import org.rutebanken.netex.model.PassengerStopAssignment;
-import org.rutebanken.netex.model.Quay;
 import org.rutebanken.netex.model.Route;
 import org.rutebanken.netex.model.RoutesInFrame_RelStructure;
 import org.rutebanken.netex.model.ServiceLink;
@@ -22,23 +34,21 @@ import org.rutebanken.netex.model.StopAssignmentsInFrame_RelStructure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.bind.JAXBElement;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-
 class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ServiceFrameParser.class);
+    private static final MaxCountLogger PASSENGER_STOP_ASSIGNMENT_LOGGER = maxCount(LOG);
 
-    private final ReadOnlyHierarchicalVersionMapById<Quay> quayById;
+
+    private final ReadOnlyHierarchicalMapById<FlexibleStopPlace> flexibleStopPlaceById;
 
     private final Collection<Network> networks = new ArrayList<>();
 
     private final Collection<GroupOfLines> groupOfLines = new ArrayList<>();
 
     private final Collection<Route> routes = new ArrayList<>();
+
+    private final Collection<FlexibleLine> flexibleLines = new ArrayList<>();
 
     private final Collection<Line> lines = new ArrayList<>();
 
@@ -50,12 +60,16 @@ class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
 
     private final Map<String, String> quayIdByStopPointRef = new HashMap<>();
 
+    private final Map<String, String> flexibleStopPlaceByStopPointRef = new HashMap<>();
+
     private final Collection<ServiceLink> serviceLinks = new ArrayList<>();
 
     private final NoticeParser noticeParser = new NoticeParser();
 
-    ServiceFrameParser(ReadOnlyHierarchicalVersionMapById<Quay> quayById) {
-        this.quayById = quayById;
+    ServiceFrameParser(
+        ReadOnlyHierarchicalMapById<FlexibleStopPlace> flexibleStopPlaceById
+    ) {
+        this.flexibleStopPlaceById = flexibleStopPlaceById;
     }
 
     @Override
@@ -63,6 +77,7 @@ class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
         parseStopAssignments(frame.getStopAssignments());
         parseRoutes(frame.getRoutes());
         parseNetwork(frame.getNetwork());
+        parseAdditionalNetworks(frame.getAdditionalNetworks());
         noticeParser.parseNotices(frame.getNotices());
         noticeParser.parseNoticeAssignments(frame.getNoticeAssignments());
         parseLines(frame.getLines());
@@ -105,15 +120,17 @@ class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
     }
 
     @Override
-    void setResultOnIndex(NetexImportDataIndex index) {
+    void setResultOnIndex(NetexEntityIndex index) {
         // update entities
         index.destinationDisplayById.addAll(destinationDisplays);
         index.groupOfLinesById.addAll(groupOfLines);
         index.journeyPatternsById.addAll(journeyPatterns);
+        index.flexibleLineByid.addAll(flexibleLines);
         index.lineById.addAll(lines);
         index.networkById.addAll(networks);
         noticeParser.setResultOnIndex(index);
-        index.quayIdByStopPointRef.addAll((quayIdByStopPointRef));
+        index.quayIdByStopPointRef.addAll(quayIdByStopPointRef);
+        index.flexibleStopPlaceByStopPointRef.addAll(flexibleStopPlaceByStopPointRef);
         index.routeById.addAll(routes);
         index.serviceLinkById.addAll(serviceLinks);
 
@@ -121,24 +138,50 @@ class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
         index.networkIdByGroupOfLineId.addAll(networkIdByGroupOfLineId);
     }
 
+    static void logSummary() {
+        PASSENGER_STOP_ASSIGNMENT_LOGGER.logTotal("PassengerStopAssignment with empty quay ref.");
+    }
+
     private void parseStopAssignments(StopAssignmentsInFrame_RelStructure stopAssignments) {
         if (stopAssignments == null) return;
 
-        for (JAXBElement stopAssignment : stopAssignments.getStopAssignment()) {
+        for (JAXBElement<?> stopAssignment : stopAssignments.getStopAssignment()) {
             if (stopAssignment.getValue() instanceof PassengerStopAssignment) {
-                PassengerStopAssignment assignment = (PassengerStopAssignment) stopAssignment
-                        .getValue();
-                String quayRef = assignment.getQuayRef().getRef();
+                var assignment = (PassengerStopAssignment) stopAssignment.getValue();
 
-                // TODO OTP2 - This check belongs to the mapping or as a separate validation
-                //           - step. The problem is that we do not want to relay on the
-                //           - the order in witch elements are loaded.
-                Quay quay = quayById.lookupLastVersionById(quayRef);
-                if (quay != null) {
+                if(assignment.getQuayRef() == null) {
+                    PASSENGER_STOP_ASSIGNMENT_LOGGER.info(
+                            "PassengerStopAssignment with empty quay ref is dropped. Assigment: {}",
+                            assignment.getId()
+                    );
+                }
+                else  {
+                    String quayRef = assignment.getQuayRef().getRef();
                     String stopPointRef = assignment.getScheduledStopPointRef().getValue().getRef();
-                    quayIdByStopPointRef.put(stopPointRef, quay.getId());
-                } else {
-                    LOG.warn("Quay {} not found in stop place file.", quayRef);
+                    quayIdByStopPointRef.put(stopPointRef, quayRef);
+                }
+            }
+            else if (stopAssignment.getValue() instanceof FlexibleStopAssignment) {
+                if(OTPFeature.FlexRouting.isOn()) {
+                    FlexibleStopAssignment assignment = (FlexibleStopAssignment) stopAssignment.getValue();
+                    String flexibleStopPlaceRef = assignment.getFlexibleStopPlaceRef().getRef();
+
+                    // TODO OTP2 - This check belongs to the mapping or as a separate validation
+                    //           - step. The problem is that we do not want to relay on the
+                    //           - the order in which elements are loaded.
+                    FlexibleStopPlace flexibleStopPlace = flexibleStopPlaceById.lookup(
+                        flexibleStopPlaceRef);
+
+                    if (flexibleStopPlace != null) {
+                        String stopPointRef = assignment.getScheduledStopPointRef().getValue().getRef();
+                        flexibleStopPlaceByStopPointRef.put(stopPointRef, flexibleStopPlace.getId());
+                    }
+                    else {
+                        LOG.warn(
+                            "FlexibleStopPlace {} not found in stop place file.",
+                            flexibleStopPlaceRef
+                        );
+                    }
                 }
             }
             else {
@@ -150,7 +193,7 @@ class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
     private void parseRoutes(RoutesInFrame_RelStructure routes) {
         if (routes == null) return;
 
-        for (JAXBElement element : routes.getRoute_()) {
+        for (JAXBElement<?> element : routes.getRoute_()) {
             if (element.getValue() instanceof Route) {
                 Route route = (Route) element.getValue();
                 this.routes.add(route);
@@ -170,6 +213,14 @@ class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
         }
     }
 
+    private void parseAdditionalNetworks(NetworksInFrame_RelStructure additionalNetworks) {
+        if (additionalNetworks == null) { return; }
+
+        for (Network additionalNetwork : additionalNetworks.getNetwork()) {
+            parseNetwork(additionalNetwork);
+        }
+    }
+
     private void parseGroupOfLines(Collection<GroupOfLines> groupOfLines, Network network) {
         for (GroupOfLines group : groupOfLines) {
             networkIdByGroupOfLineId.put(group.getId(), network.getId());
@@ -180,9 +231,13 @@ class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
     private void parseLines(LinesInFrame_RelStructure lines) {
         if (lines == null) return;
 
-        for (JAXBElement element : lines.getLine_()) {
+        for (JAXBElement<?> element : lines.getLine_()) {
             if (element.getValue() instanceof Line) {
                 this.lines.add((Line) element.getValue());
+            } else if (element.getValue() instanceof FlexibleLine) {
+                if(OTPFeature.FlexRouting.isOn()) {
+                    this.flexibleLines.add((FlexibleLine) element.getValue());
+                }
             }
             else {
                 warnOnMissingMapping(LOG, element.getValue());
@@ -193,7 +248,7 @@ class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
     private void parseJourneyPatterns(JourneyPatternsInFrame_RelStructure journeyPatterns) {
         if (journeyPatterns == null) return;
 
-        for (JAXBElement pattern : journeyPatterns.getJourneyPattern_OrJourneyPatternView()) {
+        for (JAXBElement<?> pattern : journeyPatterns.getJourneyPattern_OrJourneyPatternView()) {
             if (pattern.getValue() instanceof JourneyPattern) {
                 this.journeyPatterns.add((JourneyPattern) pattern.getValue());
             }

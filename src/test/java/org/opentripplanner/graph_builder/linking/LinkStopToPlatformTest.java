@@ -1,7 +1,12 @@
 package org.opentripplanner.graph_builder.linking;
 
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -10,8 +15,11 @@ import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.model.Stop;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
+import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.edgetype.AreaEdge;
 import org.opentripplanner.routing.edgetype.AreaEdgeList;
+import org.opentripplanner.routing.edgetype.StreetTransitStopLink;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
@@ -19,13 +27,9 @@ import org.opentripplanner.routing.vertextype.TransitStopVertex;
 import org.opentripplanner.util.I18NString;
 import org.opentripplanner.util.LocalizedString;
 
-import java.util.ArrayList;
-
-import static org.junit.Assert.assertEquals;
-
 public class LinkStopToPlatformTest {
 
-    private static GeometryFactory geometryFactory = GeometryUtils.getGeometryFactory();
+    private static final GeometryFactory geometryFactory = GeometryUtils.getGeometryFactory();
 
     private Graph graph;
 
@@ -44,7 +48,7 @@ public class LinkStopToPlatformTest {
         vertices.add(new IntersectionVertex(graph, "4", 10.22493, 59.13518, "Platform vertex 4"));
         vertices.add(new IntersectionVertex(graph, "5", 10.22056, 59.13575, "Platform vertex 5"));
 
-        AreaEdgeList areaEdgeList = new AreaEdgeList();
+        AreaEdgeList areaEdgeList = new AreaEdgeList(GeometryUtils.getGeometryFactory().createPolygon());
 
         ArrayList<AreaEdge> edges = new ArrayList<AreaEdge>();
 
@@ -70,19 +74,32 @@ public class LinkStopToPlatformTest {
      */
     @Test
     public void testLinkStopWithoutExtraEdges() {
-        SimpleStreetSplitter splitter = SimpleStreetSplitter.createForTest(graph);
-        splitter.link();
+        VertexLinker linker = graph.getLinker();
+
+        for (TransitStopVertex tStop : graph.getVerticesOfType(TransitStopVertex.class)) {
+            linker.linkVertexPermanently(
+                tStop,
+                new TraverseModeSet(TraverseMode.WALK),
+                LinkingDirection.BOTH_WAYS,
+                (vertex, streetVertex) -> List.of(
+                    new StreetTransitStopLink((TransitStopVertex) vertex, streetVertex),
+                    new StreetTransitStopLink(streetVertex, (TransitStopVertex) vertex)
+                )
+            );
+        }
 
         assertEquals(16, graph.getEdges().size());
     }
 
     @Test
+    @Ignore
     public void testLinkStopWithExtraEdges() {
-        SimpleStreetSplitter splitter = SimpleStreetSplitter.createForTest(graph);
-        splitter.setAddExtraEdgesToAreas(true);
-        splitter.link();
-
-        assertEquals(38, graph.getEdges().size());
+        // TODO Reimplement this functionality #3152
+//        SimpleStreetSplitter splitter = SimpleStreetSplitter.createForTest(graph);
+//        splitter.setAddExtraEdgesToAreas(true);
+//        splitter.link();
+//
+//        assertEquals(38, graph.getEdges().size());
     }
 
     private AreaEdge createAreaEdge(IntersectionVertex v1, IntersectionVertex v2, AreaEdgeList area, String nameString) {

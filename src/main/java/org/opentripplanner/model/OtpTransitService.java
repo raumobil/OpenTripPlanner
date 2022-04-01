@@ -1,10 +1,10 @@
 package org.opentripplanner.model;
 
 import com.google.common.collect.Multimap;
-import org.opentripplanner.ext.flex.trip.FlexTrip;
-
 import java.util.Collection;
 import java.util.List;
+import org.opentripplanner.ext.flex.trip.FlexTrip;
+import org.opentripplanner.model.transfer.ConstrainedTransfer;
 
 /**
  * Methods for accessing imported entities.
@@ -35,7 +35,7 @@ public interface OtpTransitService {
      * This is equivalent to a Transmodel Notice Assignments. The map key may reference entity ids of
      * any type (Serializable).
      */
-    Multimap<TransitEntity<?>, Notice> getNoticeAssignments();
+    Multimap<TransitEntity, Notice> getNoticeAssignments();
 
     Collection<Pathway> getAllPathways();
 
@@ -70,7 +70,7 @@ public interface OtpTransitService {
      */
     List<StopTime> getStopTimesForTrip(Trip trip);
 
-    Collection<Transfer> getAllTransfers();
+    Collection<ConstrainedTransfer> getAllTransfers();
 
     Collection<TripPattern> getTripPatterns();
 

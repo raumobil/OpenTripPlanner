@@ -3,6 +3,10 @@ package org.opentripplanner.openstreetmap.model;
 import java.util.HashMap;
 import java.util.Map;
 
+import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.function.Consumer;
+import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.module.osm.TemplateLibrary;
 import org.opentripplanner.util.I18NString;
 import org.opentripplanner.util.NonLocalizedString;
@@ -78,8 +82,9 @@ public class OSMWithTags {
      */
     public boolean isTagFalse(String tag) {
         tag = tag.toLowerCase();
-        if (tags == null)
+        if (tags == null) {
             return false;
+        }
 
         return isFalse(getTag(tag));
     }
@@ -89,8 +94,9 @@ public class OSMWithTags {
      */
     public boolean isTagTrue(String tag) {
         tag = tag.toLowerCase();
-        if (tags == null)
+        if (tags == null) {
             return false;
+        }
 
         return isTrue(getTag(tag));
     }
@@ -118,12 +124,31 @@ public class OSMWithTags {
     }
 
     /**
+     * Get tag and convert it to an integer. If the tag exist, but can not be parsed into a
+     * number, then the error handler is called with the value witch failed to parse.
+     */
+    public OptionalInt getTagAsInt(String tag, Consumer<String> errorHandler) {
+        String value = getTag(tag);
+        if (value != null) {
+            try {
+                return OptionalInt.of(Integer.parseInt(value));
+            }
+            catch (NumberFormatException e) {
+                errorHandler.accept(value);
+            }
+        }
+        return OptionalInt.empty();
+    }
+
+
+    /**
      * Checks is a tag contains the specified value.
      */
     public Boolean isTag(String tag, String value) {
         tag = tag.toLowerCase();
-        if (tags != null && tags.containsKey(tag) && value != null)
+        if (tags != null && tags.containsKey(tag) && value != null) {
             return value.equals(tags.get(tag));
+        }
 
         return false;
     }
@@ -133,21 +158,24 @@ public class OSMWithTags {
      * {@link org.opentripplanner.graph_builder.module.osm.OpenStreetMapModule}
      */
     public I18NString getAssumedName() {
-        if (tags.containsKey("name"))
+        if (tags == null) {
+            return null;
+        }
+        if (tags.containsKey("name")) {
             return TranslatedString.getI18NString(TemplateLibrary.generateI18N("{name}", this));
-
-        if (tags.containsKey("otp:route_name"))
+        }
+        if (tags.containsKey("otp:route_name")) {
             return new NonLocalizedString(tags.get("otp:route_name"));
-
-        if (this.creativeName != null)
+        }
+        if (this.creativeName != null) {
             return this.creativeName;
-
-        if (tags.containsKey("otp:route_ref"))
+        }
+        if (tags.containsKey("otp:route_ref")) {
             return new NonLocalizedString(tags.get("otp:route_ref"));
-
-        if (tags.containsKey("ref"))
+        }
+        if (tags.containsKey("ref")) {
             return new NonLocalizedString(tags.get("ref"));
-
+        }
         return null;
     }
 
@@ -159,9 +187,8 @@ public class OSMWithTags {
                 out.put(k, entry.getValue());
             }
         }
+        if (out.isEmpty()) { return null; }
 
-        if (out.isEmpty())
-            return null;
         return out;
     }
 
@@ -277,19 +304,6 @@ public class OSMWithTags {
     public boolean isPedestrianExplicitlyAllowed() {
         return doesTagAllowAccess("foot");
     }
-
-    /**
-     * Returns true if through traffic is not allowed.
-     * 
-     * @return
-     */
-    public boolean isThroughTrafficExplicitlyDisallowed() {
-        String access = getTag("access");
-        boolean noThruTraffic = "destination".equals(access) || "private".equals(access)
-                || "customers".equals(access) || "delivery".equals(access)
-                || "forestry".equals(access) || "agricultural".equals(access);
-        return noThruTraffic;
-    }
     
     /**
      * @return True if this node / area is a park and ride.
@@ -298,8 +312,10 @@ public class OSMWithTags {
         String parkingType = getTag("parking");
         String parkAndRide = getTag("park_ride");
         return isTag("amenity", "parking")
-                && (parkingType != null && parkingType.contains("park_and_ride"))
-                || (parkAndRide != null && !parkAndRide.equalsIgnoreCase("no"));
+                && (
+                        (parkingType != null && parkingType.contains("park_and_ride"))
+                     || (parkAndRide != null && !parkAndRide.equalsIgnoreCase("no"))
+        );
     }
 
     /**
@@ -312,5 +328,9 @@ public class OSMWithTags {
 
     public void setCreativeName(I18NString creativeName) {
         this.creativeName = creativeName;
+    }
+
+    public String getOpenStreetMapLink() {
+        return null;
     }
 }

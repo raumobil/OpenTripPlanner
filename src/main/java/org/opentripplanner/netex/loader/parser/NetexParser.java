@@ -1,6 +1,6 @@
 package org.opentripplanner.netex.loader.parser;
 
-import org.opentripplanner.netex.loader.NetexImportDataIndex;
+import org.opentripplanner.netex.index.NetexEntityIndex;
 import org.rutebanken.netex.model.VersionFrame_VersionStructure;
 import org.slf4j.Logger;
 
@@ -20,7 +20,7 @@ abstract class NetexParser<T> {
     abstract void parse(T node);
 
     /** Add the result - the parsed objects - to the index. */
-    abstract void setResultOnIndex(NetexImportDataIndex netexIndex);
+    abstract void setResultOnIndex(NetexEntityIndex netexIndex);
 
 
     /* static methods for logging unhandled elements - this ensure consistent logging. */
@@ -48,7 +48,7 @@ abstract class NetexParser<T> {
 
 
     /**
-     * Log a warning for Netex elements witch is not mapped. There might be something wrong
+     * Log a warning for Netex elements which is not mapped. There might be something wrong
      * with the data or there might be something wrong with the Netex data import(ignoring these
      * elements). The element should be relevant to OTP. OTP do not support Netex 100%, but
      * elements in Nordic profile, see https://enturas.atlassian.net/wiki/spaces/PUBLIC/overview

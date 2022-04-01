@@ -1,5 +1,6 @@
 package org.opentripplanner.standalone.config;
 
+import java.time.Duration;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.opentripplanner.model.FeedScopedId;
@@ -22,6 +23,9 @@ import static org.junit.Assert.fail;
 import static org.opentripplanner.standalone.config.JsonSupport.newNodeAdapterForTest;
 
 public class NodeAdapterTest {
+
+    public static final Duration D3h = Duration.ofHours(3);
+
     private enum AnEnum { A, B, C }
 
     @Test
@@ -105,6 +109,7 @@ public class NodeAdapterTest {
         // Then
         assertEquals("Get existing property", AnEnum.A, subject.asEnum("key", AnEnum.B));
         assertEquals("Get default value", AnEnum.B, subject.asEnum("missing-key", AnEnum.B));
+        assertEquals("Get existing property", AnEnum.A, subject.asEnum("key", AnEnum.class));
     }
 
     @Test(expected = OtpAppException.class)
@@ -203,12 +208,27 @@ public class NodeAdapterTest {
     }
 
     @Test(expected = OtpAppException.class)
-    public void testParsePeriodDateThrowsException() throws Exception {
+    public void testParsePeriodDateThrowsException() {
         // Given
         NodeAdapter subject  = newNodeAdapterForTest("{ 'foo' : 'bar' }");
 
         // Then
         subject.asDateOrRelativePeriod("foo", null);
+    }
+
+    @Test
+    public void asDuration() {
+        NodeAdapter subject  = newNodeAdapterForTest("{ key1 : 'PT1s', key2 : '4d3h2m1s' }");
+        assertEquals("PT1S", subject.asDuration("key1", null).toString());
+        assertEquals("PT99H2M1S", subject.asDuration("key2", null).toString());
+        assertEquals("PT3H", subject.asDuration("missing-key", D3h).toString());
+    }
+
+    @Test
+    public void asDurations() {
+        NodeAdapter subject  = newNodeAdapterForTest("{ key1 : ['PT1s', '2h'] }");
+        assertEquals("[PT1S, PT2H]", subject.asDurations("key1", List.of()).toString());
+        assertEquals("[PT3H]", subject.asDurations("missing-key", List.of(D3h)).toString());
     }
 
     @Test
@@ -223,15 +243,18 @@ public class NodeAdapterTest {
 
     @Test
     public void asPattern() {
-        NodeAdapter subject  = newNodeAdapterForTest("{ aPtn : 'Ab*a' }");
-        assertEquals("Ab*a",  subject.asPattern("aPtn", "ABC").toString());
+        NodeAdapter subject  = newNodeAdapterForTest("{ key : 'Ab*a' }");
+        assertEquals("Ab*a",  subject.asPattern("key", "ABC").toString());
         assertEquals("ABC",  subject.asPattern("missingField", "ABC").toString());
     }
 
     @Test
     public void uri() {
-        NodeAdapter subject  = newNodeAdapterForTest("{ aUri : 'gs://bucket/path/a.obj' }");
-        assertEquals("gs://bucket/path/a.obj",  subject.asUri("aUri", null).toString());
+        var URL = "gs://bucket/a.obj";
+        NodeAdapter subject  = newNodeAdapterForTest("{ aUri : '" + URL + "' }");
+
+        assertEquals(URL,  subject.asUri("aUri").toString());
+        assertEquals(URL,  subject.asUri("aUri", null).toString());
         assertEquals("http://foo.bar/", subject.asUri("missingField", "http://foo.bar/").toString());
         assertNull(subject.asUri("missingField", null));
     }
@@ -248,6 +271,20 @@ public class NodeAdapterTest {
         }
     }
 
+    @Test
+    public void uriRequiredValueMissing() {
+        NodeAdapter subject  = newNodeAdapterForTest("{ }");
+        try {
+            subject.asUri("aUri");
+            fail("Expected an exception");
+        }
+        catch (OtpAppException e) {
+            assertTrue(
+                    e.getMessage(),
+                    e.getMessage().contains("Required parameter 'aUri' not found in 'Test'")
+            );
+        }
+    }
 
     @Test
     public void uris() {
@@ -292,5 +329,40 @@ public class NodeAdapterTest {
             subject.asLinearFunction("key", null).toString()
         );
         assertNull(subject.asLinearFunction("no-key", null));
+    }
+
+    @Test
+    public void asMap() {
+        NodeAdapter subject = newNodeAdapterForTest("{ key : { A: true, B: false } }");
+        assertEquals(
+            Map.of("A", true, "B", false),
+            subject.asMap("key", NodeAdapter::asBoolean)
+        );
+        assertEquals(
+            Collections.<String, Boolean>emptyMap(),
+            subject.asMap("missing-key", NodeAdapter::asBoolean)
+        );
+    }
+
+    @Test
+    public void asTextSet() {
+        NodeAdapter subject = newNodeAdapterForTest("{ ids : ['A', 'C', 'F'] }");
+        assertEquals(
+                Set.of("A", "C", "F"),
+                subject.asTextSet("ids", Collections.emptySet())
+        );
+        assertEquals(
+                Set.of("X"),
+                subject.asTextSet("nonExisting", Set.of("X"))
+        );
+    }
+
+    @Test
+    public void isNonEmptyArray() {
+        NodeAdapter subject = newNodeAdapterForTest("{ foo : ['A'], bar: [], foobar: true }");
+        assertTrue(subject.path("foo").isNonEmptyArray());
+        assertFalse(subject.path("bar").isNonEmptyArray());
+        assertFalse(subject.path("foobar").isNonEmptyArray());
+        assertFalse(subject.path("missing").isNonEmptyArray());
     }
 }

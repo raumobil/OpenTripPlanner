@@ -6,7 +6,7 @@ import org.opentripplanner.routing.core.StateEditor;
 import org.opentripplanner.routing.core.TraverseMode;
 
 import org.locationtech.jts.geom.LineString;
-import java.util.Locale;
+import org.opentripplanner.util.I18NString;
 
 public class SimpleConcreteEdge extends Edge {
     private static final long serialVersionUID = 1L;
@@ -25,7 +25,7 @@ public class SimpleConcreteEdge extends Edge {
     public State traverse(State s0) {
         double d = getDistanceMeters();
         TraverseMode mode = s0.getNonTransitMode();
-        int t = (int) (d / s0.getOptions().getSpeed(mode));
+        int t = (int) (d / s0.getOptions().getSpeed(mode, false));
         StateEditor s1 = s0.edit(this);
         s1.incrementTimeInSeconds(t);
         s1.incrementWeight(d);
@@ -33,12 +33,7 @@ public class SimpleConcreteEdge extends Edge {
     }
 
     @Override
-    public String getName() {
-        return null;
-    }
-
-    @Override
-    public String getName(Locale locale) {
+    public I18NString getName() {
         return null;
     }
 

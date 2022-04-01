@@ -8,14 +8,18 @@ import graphql.schema.GraphQLNonNull;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLTypeReference;
+import org.opentripplanner.ext.flex.trip.FlexTrip;
 import org.opentripplanner.ext.transmodelapi.mapping.TransitIdMapper;
 import org.opentripplanner.ext.transmodelapi.model.EnumTypes;
 import org.opentripplanner.ext.transmodelapi.model.TransmodelTransportSubmode;
 import org.opentripplanner.ext.transmodelapi.support.GqlUtil;
 import org.opentripplanner.model.Route;
+import org.opentripplanner.model.Trip;
 import org.opentripplanner.model.TripPattern;
+import org.opentripplanner.util.OTPFeature;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.opentripplanner.ext.transmodelapi.model.EnumTypes.TRANSPORT_MODE;
@@ -33,7 +37,8 @@ public class LineType {
       GraphQLObjectType presentationType,
       GraphQLOutputType journeyPatternType,
       GraphQLOutputType serviceJourneyType,
-      GraphQLOutputType ptSituationElementType
+      GraphQLOutputType ptSituationElementType,
+      GraphQLOutputType brandingType
   ) {
     return GraphQLObjectType.newObject()
             .name(NAME)
@@ -54,6 +59,10 @@ public class LineType {
                     .dataFetcher(environment -> (((Route) environment.getSource()).getOperator()))
                     .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
+                    .name("branding")
+                    .type(brandingType)
+                    .dataFetcher(environment -> ((Route) environment.getSource()).getBranding()))
+            .field(GraphQLFieldDefinition.newFieldDefinition()
                     .name("publicCode")
                     .type(Scalars.GraphQLString)
                     .description("Publicly announced code for line, differentiating it from other lines for the same operator.")
@@ -72,8 +81,10 @@ public class LineType {
             .field(GraphQLFieldDefinition.newFieldDefinition()
                     .name("transportSubmode")
                     .type(EnumTypes.TRANSPORT_SUBMODE)
-                    .description("NOT IMPLEMENTED")
-                    .dataFetcher(environment -> TransmodelTransportSubmode.UNDEFINED)
+                    .dataFetcher(environment -> {
+                        final String netexSubMode = ((Route) environment.getSource()).getNetexSubmode();
+                        return netexSubMode != null ? TransmodelTransportSubmode.fromValue(netexSubMode): null;
+                    })
                     .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
                     .name("description")
@@ -118,13 +129,25 @@ public class LineType {
                     .name("serviceJourneys")
                     .type(new GraphQLNonNull(new GraphQLList(serviceJourneyType)))
                     .dataFetcher(environment -> {
-                      return GqlUtil.getRoutingService(environment).getPatternsForRoute()
-                              .get(environment.getSource())
-                              .stream()
-                              .map(TripPattern::getTrips)
-                              .flatMap(Collection::stream)
-                              .distinct()
-                              .collect(Collectors.toList());
+                      List<Trip> result = GqlUtil
+                          .getRoutingService(environment)
+                          .getPatternsForRoute()
+                          .get(environment.getSource())
+                          .stream()
+                          .flatMap(TripPattern::scheduledTripsAsStream)
+                          .distinct()
+                          .collect(Collectors.toList());
+
+                      if(OTPFeature.FlexRouting.isOn()) {
+                        // Workaround since flex trips are not part of patterns yet
+                        result.addAll(GqlUtil.getRoutingService(environment).getFlexIndex().tripById
+                            .values()
+                            .stream()
+                            .map(FlexTrip::getTrip)
+                            .filter(t -> t.getRoute().equals((Route) environment.getSource()))
+                            .collect(Collectors.toList()));
+                      }
+                      return result;
                     })
                     .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
@@ -139,21 +162,21 @@ public class LineType {
                     .name("situations")
                     .description("Get all situations active for the line.")
                     .type(new GraphQLNonNull(new GraphQLList(ptSituationElementType)))
-                .dataFetcher(environment -> {
-                  return GqlUtil.getRoutingService(environment).getTransitAlertService().getRouteAlerts(
-                      environment.getSource());
-                })
+                .dataFetcher(environment -> GqlUtil.getRoutingService(environment)
+                        .getTransitAlertService()
+                        .getRouteAlerts(((Route) environment.getSource()).getId()))
                 .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
                 .name("flexibleLineType")
                 .description("Type of flexible line, or null if line is not flexible.")
                 .type(Scalars.GraphQLString)
-                .dataFetcher(environment -> null)
+                .dataFetcher(environment -> ((Route) environment.getSource()).getFlexibleLineType())
                 .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
                 .name("bookingArrangements")
                 .description("Booking arrangements for flexible line.")
                 .type(bookingArrangementType)
+                .deprecate("BookingArrangements are defined per stop, and can be found under `passingTimes` or `estimatedCalls`")
                 .dataFetcher(environment -> null)
                 .build())
             .build();

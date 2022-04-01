@@ -1,13 +1,10 @@
 package org.opentripplanner.transit.raptor.rangeraptor.standard.besttimes;
 
 
-import org.opentripplanner.transit.raptor.api.path.Path;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTransfer;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTripSchedule;
+import org.opentripplanner.transit.raptor.api.transit.TransitArrival;
 import org.opentripplanner.transit.raptor.rangeraptor.standard.StopArrivalsState;
-
-import java.util.Collection;
-import java.util.Collections;
 
 /**
  * The responsibility of this class is to calculate the best arrival times at every stop.
@@ -34,12 +31,9 @@ public class BestTimesOnlyStopArrivalsState<T extends RaptorTripSchedule> implem
     }
 
     @Override
-    public void setAccess(int stop, int arrivalTime, RaptorTransfer access) {
-        bestNumberOfTransfers.arriveAtStop(stop);
+    public void setAccessTime(int arrivalTime, RaptorTransfer access, boolean bestTime) {
+        bestNumberOfTransfers.arriveAtStop(access.stop());
     }
-
-    @Override
-    public Collection<Path<T>> extractPaths() { return Collections.emptyList(); }
 
     /**
      * This implementation does NOT return the "best time in the previous round"; It returns the
@@ -64,13 +58,16 @@ public class BestTimesOnlyStopArrivalsState<T extends RaptorTripSchedule> implem
     }
 
     @Override
-    public void rejectNewBestTransitTime(int stop, int alightTime, T trip, int boardStop, int boardTime) { }
-
-    @Override
-    public void setNewBestTransferTime(int fromStop, int arrivalTime, RaptorTransfer transferLeg) {
-        bestNumberOfTransfers.arriveAtStop(transferLeg.stop());
+    public void setNewBestTransferTime(int fromStop, int arrivalTime, RaptorTransfer transfer) {
+        bestNumberOfTransfers.arriveAtStop(transfer.stop());
     }
 
     @Override
-    public void rejectNewBestTransferTime(int fromStop, int arrivalTime, RaptorTransfer transferLeg) { }
+    public TransitArrival<T> previousTransit(int boardStopIndex) {
+        throw new IllegalStateException(
+                "The implementation of this interface is not compatible with the request" +
+                        "configuration. For example the BestTimesOnlyStopArrivalsState can not be used " +
+                        "with constrained transfers."
+        );
+    }
 }

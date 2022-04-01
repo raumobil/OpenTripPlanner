@@ -3,8 +3,13 @@ package org.opentripplanner.ext.siri;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimaps;
-import org.opentripplanner.model.FeedScopedId;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.validation.constraints.NotNull;
 import org.opentripplanner.model.Stop;
+import org.opentripplanner.model.StopLocation;
 import org.opentripplanner.model.StopPattern;
 import org.opentripplanner.model.Trip;
 import org.opentripplanner.model.TripPattern;
@@ -13,12 +18,6 @@ import org.opentripplanner.routing.graph.Graph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.NotNull;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * A synchronized cache of trip patterns that are added to the graph due to GTFS-realtime messages.
  */
@@ -26,15 +25,20 @@ public class SiriTripPatternCache {
 
     private static final Logger log = LoggerFactory.getLogger(SiriTripPatternCache.class);
 
-    private int counter = 0;
-
     private final Map<StopPatternServiceDateKey, TripPattern> cache = new HashMap<>();
 
-    private final ListMultimap<Stop, TripPattern> patternsForStop = Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
+    private final ListMultimap<StopLocation, TripPattern> patternsForStop = Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
 
     private final Map<TripServiceDateKey, TripPattern> updatedTripPatternsForTripCache = new HashMap<>();
 
-    /**
+    private final SiriTripPatternIdGenerator tripPatternIdGenerator;
+
+
+    public SiriTripPatternCache(SiriTripPatternIdGenerator tripPatternIdGenerator) {
+        this.tripPatternIdGenerator = tripPatternIdGenerator;
+    }
+
+ /**
      * Get cached trip pattern or create one if it doesn't exist yet. If a trip pattern is created, vertices
      * and edges for this trip pattern are also created in the graph.
      * 
@@ -55,17 +59,15 @@ public class SiriTripPatternCache {
         
         // Create TripPattern if it doesn't exist yet
         if (tripPattern == null) {
-            tripPattern = new TripPattern(trip.getRoute(), stopPattern);
+            var id = tripPatternIdGenerator.generateUniqueTripPatternId(trip);
+            tripPattern = new TripPattern(id, trip.getRoute(), stopPattern);
 
-            // Generate unique code for trip pattern
-            //TODO - SIRI: Is this a good way to generate new trippPattern.id?
-            tripPattern.setId(new FeedScopedId(trip.getId().getFeedId(), generateUniqueTripPatternCode(tripPattern)));
-            
+
             // Create an empty bitset for service codes (because the new pattern does not contain any trips)
             tripPattern.setServiceCodes(graph.getServiceCodes());
             
             // Finish scheduled time table
-            tripPattern.scheduledTimetable.finish();
+            tripPattern.getScheduledTimetable().finish();
             
             // Create vertices and edges for new TripPattern
             // TODO: purge these vertices and edges once in a while?
@@ -75,9 +77,11 @@ public class SiriTripPatternCache {
 
             TripPattern originalTripPattern = graph.index.getPatternForTrip().get(trip);
 
+            tripPattern.setCreatedByRealtimeUpdater();
+
             // Copy information from the TripPattern this is replacing
             if (originalTripPattern != null) {
-                tripPattern.setId(originalTripPattern.getId());
+                tripPattern.setOriginalTripPattern(originalTripPattern);
                 tripPattern.setHopGeometriesFromPattern(originalTripPattern);
             }
             
@@ -124,7 +128,10 @@ public class SiriTripPatternCache {
              * Remove previously added TripPatterns for the trip currently being updated - if the stopPattern does not match
              */
             TripPattern cachedTripPattern = updatedTripPatternsForTripCache.get(tripServiceDateKey);
-            if (cachedTripPattern != null && !tripPattern.stopPattern.equals(cachedTripPattern.stopPattern)) {
+            if (
+                    cachedTripPattern != null &&
+                    !tripPattern.stopPatternIsEqual(cachedTripPattern)
+            ) {
                 int sizeBefore = patternsForStop.values().size();
                 long t1 = System.currentTimeMillis();
                 patternsForStop.values().removeAll(Arrays.asList(cachedTripPattern));
@@ -139,7 +146,7 @@ public class SiriTripPatternCache {
         }
 
         // To make these trip patterns visible for departureRow searches.
-        for (Stop stop: tripPattern.getStops()) {
+        for (var stop: tripPattern.getStops()) {
             if (!patternsForStop.containsEntry(stop, tripPattern)) {
                 patternsForStop.put(stop, tripPattern);
             }
@@ -153,25 +160,6 @@ public class SiriTripPatternCache {
         return tripPattern;
     }
 
-    /**
-     * Generate unique trip pattern code for real-time added trip pattern. This function roughly
-     * follows the format of {@link TripPattern#generateUniqueIds(java.util.Collection)}.
-     * 
-     * @param tripPattern trip pattern to generate code for
-     * @return unique trip pattern code
-     */
-    private String generateUniqueTripPatternCode(TripPattern tripPattern) {
-        FeedScopedId routeId = tripPattern.route.getId();
-        String direction = tripPattern.directionId != -1 ? String.valueOf(tripPattern.directionId) : "";
-        if (counter == Integer.MAX_VALUE) {
-            counter = 0;
-        } else {
-            counter++;
-        }
-        // OBA library uses underscore as separator, we're moving toward colon.
-        String code = String.format("%s:%s:rt#%d", routeId.getId(), direction, counter);
-        return code;
-    }
 
     /**
      * Returns any new TripPatterns added by real time information for a given stop.
@@ -196,7 +184,7 @@ class StopPatternServiceDateKey {
 
     @Override
     public boolean equals(Object thatObject) {
-        if (!(thatObject instanceof StopPatternServiceDateKey)) return false;
+        if (!(thatObject instanceof StopPatternServiceDateKey)) { return false; }
         StopPatternServiceDateKey that = (StopPatternServiceDateKey) thatObject;
         return (this.stopPattern.equals(that.stopPattern) & this.serviceDate.equals(that.serviceDate));
     }
@@ -217,7 +205,7 @@ class TripServiceDateKey {
 
     @Override
     public boolean equals(Object thatObject) {
-        if (!(thatObject instanceof TripServiceDateKey)) return false;
+        if (!(thatObject instanceof TripServiceDateKey)) { return false; }
         TripServiceDateKey that = (TripServiceDateKey) thatObject;
         return (this.trip.equals(that.trip) & this.serviceDate.equals(that.serviceDate));
     }

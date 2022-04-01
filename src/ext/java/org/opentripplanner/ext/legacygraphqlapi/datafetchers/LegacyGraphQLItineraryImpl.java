@@ -3,6 +3,7 @@ package org.opentripplanner.ext.legacygraphqlapi.datafetchers;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLDataFetchers;
+import org.opentripplanner.model.SystemNotice;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.Leg;
 import org.opentripplanner.routing.core.Fare;
@@ -28,6 +29,11 @@ public class LegacyGraphQLItineraryImpl
   @Override
   public DataFetcher<Long> duration() {
     return environment -> (long) getSource(environment).durationSeconds;
+  }
+
+  @Override
+  public DataFetcher<Integer> generalizedCost() {
+    return environment -> getSource(environment).generalizedCost;
   }
 
   @Override
@@ -76,6 +82,16 @@ public class LegacyGraphQLItineraryImpl
   @Override
   public DataFetcher<Double> elevationLost() {
     return environment -> getSource(environment).elevationLost;
+  }
+
+  @Override
+  public DataFetcher<Boolean> arrivedAtDestinationWithRentedBicycle() {
+    return environment -> getSource(environment).arrivedAtDestinationWithRentedVehicle;
+  }
+
+  @Override
+  public DataFetcher<Iterable<SystemNotice>> systemNotices() {
+    return environment -> getSource(environment).systemNotices;
   }
 
   private Itinerary getSource(DataFetchingEnvironment environment) {

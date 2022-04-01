@@ -1,11 +1,19 @@
 package org.opentripplanner.routing.edgetype;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.common.TurnRestriction;
 import org.opentripplanner.common.geometry.GeometryUtils;
+import org.opentripplanner.common.geometry.PackedCoordinateSequence;
 import org.opentripplanner.routing.api.request.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
@@ -13,11 +21,6 @@ import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.routing.vertextype.StreetVertex;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 public class PlainStreetEdgeTest {
 
@@ -38,12 +41,15 @@ public class PlainStreetEdgeTest {
         proto.carSpeed = 15.0f;
         proto.walkSpeed = 1.0;
         proto.bikeSpeed = 5.0f;
-        proto.setWalkReluctance(1.0);
-        proto.stairsReluctance = (1.0);
-        proto.turnReluctance = (1.0);
+        proto.bikeWalkingSpeed = 0.8;
+        proto.bikeReluctance = 1.0;
+        proto.carReluctance = 1.0;
+        proto.walkReluctance = 1.0;
+        proto.stairsReluctance = 1.0;
+        proto.turnReluctance = 1.0;
         proto.setStreetSubRequestModes(TraverseModeSet.allModes());
     }
-    
+
     @Test
     public void testInAndOutAngles() {
         // An edge heading straight West
@@ -135,26 +141,26 @@ public class PlainStreetEdgeTest {
         v1.trafficLight = true;
 
         RoutingRequest forward = proto.clone();
-        forward.setMode(TraverseMode.BICYCLE);
         forward.bikeSpeed = 3.0f;
         forward.setRoutingContext(graph, v0, v2);
+        forward.setMode(TraverseMode.BICYCLE);
 
         State s0 = new State(forward);
         State s1 = e0.traverse(s0);
         State s2 = e1.traverse(s1);
 
         RoutingRequest reverse = proto.clone();
-        reverse.setMode(TraverseMode.BICYCLE);
         reverse.setArriveBy(true);
         reverse.bikeSpeed = 3.0f;
         reverse.setRoutingContext(graph, v0, v2);
+        reverse.setMode(TraverseMode.BICYCLE);
 
         State s3 = new State(reverse);
         State s4 = e1.traverse(s3);
         State s5 = e0.traverse(s4);
 
-        assertEquals(73, s2.getElapsedTimeSeconds());
-        assertEquals(73, s5.getElapsedTimeSeconds());
+        assertEquals(104, s2.getElapsedTimeSeconds());
+        assertEquals(104, s5.getElapsedTimeSeconds());
     }
 
     /**
@@ -202,6 +208,8 @@ public class PlainStreetEdgeTest {
         StreetEdge e2 = edge(v2, v0, 0.0, StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE);
 
         RoutingRequest noPenalty = proto.clone();
+        noPenalty.bikeSwitchTime = 0;
+        noPenalty.bikeSwitchCost = 0;
         noPenalty.setMode(TraverseMode.BICYCLE);
         noPenalty.setRoutingContext(graph, v0, v0);
 
@@ -221,6 +229,16 @@ public class PlainStreetEdgeTest {
         State s6 = e1.traverse(s5);
         State s7 = e2.traverse(s6);
 
+        assertNull(s0.getBackMode());
+        assertEquals(TraverseMode.WALK, s1.getBackMode());
+        assertEquals(TraverseMode.BICYCLE, s2.getBackMode());
+        assertEquals(TraverseMode.BICYCLE, s3.getBackMode());
+
+        assertNull(s4.getBackMode());
+        assertEquals(TraverseMode.WALK, s5.getBackMode());
+        assertEquals(TraverseMode.BICYCLE, s6.getBackMode());
+        assertEquals(TraverseMode.BICYCLE, s7.getBackMode());
+
         assertEquals(0, s0.getElapsedTimeSeconds());
         assertEquals(0, s1.getElapsedTimeSeconds());
         assertEquals(0, s2.getElapsedTimeSeconds());
@@ -232,12 +250,12 @@ public class PlainStreetEdgeTest {
         assertEquals(0.0, s3.getWeight(), 0.0);
 
         assertEquals(0.0, s4.getWeight(), 0.0);
-        assertEquals(23.0, s5.getWeight(), 0.0);
+        assertEquals(0.0, s5.getWeight(), 0.0);
         assertEquals(23.0, s6.getWeight(), 0.0);
         assertEquals(23.0, s7.getWeight(), 0.0);
 
         assertEquals(0, s4.getElapsedTimeSeconds());
-        assertEquals(42, s5.getElapsedTimeSeconds());
+        assertEquals(0, s5.getElapsedTimeSeconds());
         assertEquals(42, s6.getElapsedTimeSeconds());
         assertEquals(42, s7.getElapsedTimeSeconds());
     }
@@ -249,9 +267,17 @@ public class PlainStreetEdgeTest {
         State state = new State(v2, 0, proto.clone());
 
         state.getOptions().setArriveBy(true);
-        graph.addTurnRestriction(e1, new TurnRestriction(e1, e0, null, TraverseModeSet.allModes()));
+        e1.addTurnRestriction(new TurnRestriction(e1, e0, null, TraverseModeSet.allModes(), null));
 
         assertNotNull(e0.traverse(e1.traverse(state)));
+    }
+
+    @Test
+    public void testElevationProfile() {
+        var elevationProfile = new PackedCoordinateSequence.Double(new double[]{0, 10, 50, 12}, 2);
+        StreetEdge e0 = edge(v0, v1, 50.0, StreetTraversalPermission.ALL, elevationProfile);
+
+        assertArrayEquals(elevationProfile.toCoordinateArray(), e0.getElevationProfile().toCoordinateArray());
     }
 
     /****
@@ -283,4 +309,23 @@ public class PlainStreetEdgeTest {
         return new StreetEdge(vA, vB, geom, name, length, perm, false);
     }
 
+    private StreetWithElevationEdge edge(
+            StreetVertex vA,
+            StreetVertex vB,
+            double length,
+            StreetTraversalPermission perm,
+            PackedCoordinateSequence elevationProfile
+    ) {
+        String labelA = vA.getLabel();
+        String labelB = vB.getLabel();
+        String name = String.format("%s_%s", labelA, labelB);
+        Coordinate[] coords = new Coordinate[2];
+        coords[0] = vA.getCoordinate();
+        coords[1] = vB.getCoordinate();
+        LineString geom = GeometryUtils.getGeometryFactory().createLineString(coords);
+
+        var edge = new StreetWithElevationEdge(vA, vB, geom, name, length, perm, false);
+        edge.setElevationProfile(elevationProfile, false);
+        return edge;
+    }
 }

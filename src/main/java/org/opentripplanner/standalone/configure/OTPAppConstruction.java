@@ -1,6 +1,5 @@
 package org.opentripplanner.standalone.configure;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.opentripplanner.datastore.DataSource;
 import org.opentripplanner.datastore.OtpDataStore;
 import org.opentripplanner.datastore.configure.DataStoreFactory;
@@ -13,10 +12,14 @@ import org.opentripplanner.standalone.server.OTPApplication;
 import org.opentripplanner.standalone.server.OTPServer;
 import org.opentripplanner.standalone.server.Router;
 import org.opentripplanner.util.OTPFeature;
+import org.opentripplanner.util.logging.MetricsLogging;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import javax.ws.rs.core.Application;
+
+import static org.opentripplanner.model.projectinfo.OtpProjectInfo.projectInfo;
 
 /**
  * This class is responsible for creating the top level services like {@link OTPConfiguration}
@@ -52,7 +55,7 @@ public class OTPAppConstruction {
     }
 
     /**
-     * Create or retrieve a data store witch provide access to files, remote or local.
+     * Create or retrieve a data store which provide access to files, remote or local.
      */
     public OtpDataStore store() {
         if(store == null) {
@@ -83,7 +86,9 @@ public class OTPAppConstruction {
         return GraphBuilder.create(
                 config.buildConfig(),
                 graphBuilderDataSources(),
-                baseGraph
+                baseGraph,
+                config.getCli().doLoadStreetGraph(),
+                config.getCli().doSaveStreetGraph()
         );
     }
 
@@ -116,8 +121,15 @@ public class OTPAppConstruction {
     public OTPServer server(Router router) {
         if (server == null) {
             server = new OTPServer(config.getCli(), router);
+            new MetricsLogging(server);
         }
         return server;
+    }
+
+    public void setOtpConfigVersionsOnServerInfo() {
+        projectInfo().otpConfigVersion = config.otpConfig().configVersion;
+        projectInfo().buildConfigVersion = config.buildConfig().configVersion;
+        projectInfo().routerConfigVersion = config.routerConfig().getConfigVersion();
     }
 
     private GraphBuilderDataSources graphBuilderDataSources() {

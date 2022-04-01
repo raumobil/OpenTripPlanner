@@ -1,24 +1,18 @@
 package org.opentripplanner.gtfs.mapping;
 
-import org.junit.Test;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Route;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Transfer;
 import org.onebusaway.gtfs.model.Trip;
-
-import java.util.Collection;
-import java.util.Collections;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.model.TripStopTimes;
 
 public class TransferMapperTest {
     private static final String FEED_ID = "FEED";
 
-    private static final RouteMapper ROUTE_MAPPER = new RouteMapper(new AgencyMapper(FEED_ID));
+    private static final RouteMapper ROUTE_MAPPER =
+            new RouteMapper(new AgencyMapper(FEED_ID), new DataImportIssueStore(false));
 
     private static final TripMapper TRIP_MAPPER = new TripMapper(ROUTE_MAPPER);
 
@@ -71,7 +65,8 @@ public class TransferMapperTest {
             ROUTE_MAPPER,
             STATION_MAPPER,
             STOP_MAPPER,
-            TRIP_MAPPER
+            TRIP_MAPPER,
+            new TripStopTimes()
     );
 
     /*
@@ -87,7 +82,7 @@ public class TransferMapperTest {
     /*
     @Test
     public void testMap() throws Exception {
-        org.opentripplanner.model.Transfer result = subject.map(TRANSFER);
+        org.opentripplanner.model.transfer.Transfer result = subject.map(TRANSFER);
 
         assertNotNull(result.getFromRoute());
         assertNotNull(result.getFromTrip());
@@ -104,7 +99,7 @@ public class TransferMapperTest {
     /*
     @Test
     public void testMapWithNulls() throws Exception {
-        org.opentripplanner.model.Transfer result = subject.map(new Transfer());
+        org.opentripplanner.model.transfer.Transfer result = subject.map(new Transfer());
 
         assertNull(result.getFromRoute());
         assertNull(result.getFromTrip());
@@ -122,8 +117,8 @@ public class TransferMapperTest {
     /*
     @Test
     public void testMapCache() throws Exception {
-        org.opentripplanner.model.Transfer result1 = subject.map(TRANSFER);
-        org.opentripplanner.model.Transfer result2 = subject.map(TRANSFER);
+        org.opentripplanner.model.transfer.Transfer result1 = subject.map(TRANSFER);
+        org.opentripplanner.model.transfer.Transfer result2 = subject.map(TRANSFER);
 
         assertTrue(result1 == result2);
     }

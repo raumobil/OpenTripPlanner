@@ -1,15 +1,15 @@
 package org.opentripplanner.transit.raptor.rangeraptor.standard.debug;
 
 
+import java.util.Collection;
 import org.opentripplanner.transit.raptor.api.path.Path;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTransfer;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTripSchedule;
+import org.opentripplanner.transit.raptor.api.transit.TransitArrival;
 import org.opentripplanner.transit.raptor.rangeraptor.RoundProvider;
 import org.opentripplanner.transit.raptor.rangeraptor.debug.DebugHandlerFactory;
 import org.opentripplanner.transit.raptor.rangeraptor.standard.StopArrivalsState;
 import org.opentripplanner.transit.raptor.rangeraptor.standard.stoparrivals.view.StopsCursor;
-
-import java.util.Collection;
 
 
 /**
@@ -37,46 +37,73 @@ public final class DebugStopArrivalsState<T extends RaptorTripSchedule> implemen
     }
 
     @Override
-    public final void setAccess(final int stop, final int arrivalTime, RaptorTransfer access) {
-        delegate.setAccess(stop, arrivalTime, access);
-        debug.acceptAccess(stop);
+    public void setAccessTime(int arrivalTime, RaptorTransfer access, boolean bestTime) {
+        delegate.setAccessTime(arrivalTime, access, bestTime);
+        debug.acceptAccessPath(access.stop(), access);
     }
 
     @Override
-    public final Collection<Path<T>> extractPaths() {
-        return delegate.extractPaths();
+    public void rejectAccessTime(int arrivalTime, RaptorTransfer access) {
+        debug.rejectAccessPath(access, arrivalTime);
+        delegate.rejectAccessTime(arrivalTime, access);
     }
 
     @Override
-    public final int bestTimePreviousRound(int stop) {
+    public int bestTimePreviousRound(int stop) {
         return delegate.bestTimePreviousRound(stop);
     }
 
     @Override
-    public void setNewBestTransitTime(int stop, int alightTime, T trip, int boardStop, int boardTime, boolean newBestOverall) {
-        debug.dropOldStateAndAcceptNewState(
+    public void setNewBestTransitTime(
+            int stop,
+            int alightTime,
+            T trip,
+            int boardStop,
+            int boardTime,
+            boolean newBestOverall
+    ) {
+        debug.dropOldStateAndAcceptNewOnBoardArrival(
                 stop,
-                () -> delegate.setNewBestTransitTime(stop, alightTime, trip, boardStop, boardTime, newBestOverall)
+                newBestOverall,
+                () -> delegate.setNewBestTransitTime(
+                        stop, alightTime, trip, boardStop, boardTime, newBestOverall
+                )
         );
     }
 
     @Override
-    public void rejectNewBestTransitTime(int stop, int alightTime, T trip, int boardStop, int boardTime) {
+    public void rejectNewBestTransitTime(
+            int stop,
+            int alightTime,
+            T trip,
+            int boardStop,
+            int boardTime
+    ) {
         debug.rejectTransit(stop, alightTime, trip, boardStop, boardTime);
         delegate.rejectNewBestTransitTime(stop, alightTime, trip, boardStop, boardTime);
     }
 
     @Override
-    public void setNewBestTransferTime(int fromStop, int arrivalTime, RaptorTransfer transferLeg) {
-        debug.dropOldStateAndAcceptNewState(
-                transferLeg.stop(),
-                () -> delegate.setNewBestTransferTime(fromStop, arrivalTime, transferLeg)
+    public void setNewBestTransferTime(int fromStop, int arrivalTime, RaptorTransfer transfer) {
+        debug.dropOldStateAndAcceptNewOnStreetArrival(
+                transfer.stop(),
+                () -> delegate.setNewBestTransferTime(fromStop, arrivalTime, transfer)
         );
     }
 
     @Override
-    public void rejectNewBestTransferTime(int fromStop, int arrivalTime, RaptorTransfer transferLeg) {
-        debug.rejectTransfer(fromStop, transferLeg, transferLeg.stop(), arrivalTime);
-        delegate.rejectNewBestTransferTime(fromStop, arrivalTime, transferLeg);
+    public void rejectNewBestTransferTime(int fromStop, int arrivalTime, RaptorTransfer transfer) {
+        debug.rejectTransfer(fromStop, transfer, transfer.stop(), arrivalTime);
+        delegate.rejectNewBestTransferTime(fromStop, arrivalTime, transfer);
+    }
+
+    @Override
+    public TransitArrival<T> previousTransit(int boardStopIndex) {
+        return delegate.previousTransit(boardStopIndex);
+    }
+
+    @Override
+    public Collection<Path<T>> extractPaths() {
+        return delegate.extractPaths();
     }
 }

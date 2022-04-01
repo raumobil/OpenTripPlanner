@@ -1,5 +1,6 @@
 package org.opentripplanner.api.mapping;
 
+import java.util.stream.Stream;
 import org.opentripplanner.api.model.ApiTrip;
 import org.opentripplanner.api.model.ApiTripShort;
 import org.opentripplanner.model.FeedScopedId;
@@ -20,11 +21,11 @@ public class TripMapper {
         api.tripShortName = obj.getTripShortName();
         api.tripHeadsign = obj.getTripHeadsign();
         api.routeShortName = obj.getRouteShortName();
-        api.directionId = obj.getDirectionId();
+        api.directionId = obj.getGtfsDirectionIdAsString(null);
         api.blockId = obj.getBlockId();
         api.shapeId = FeedScopedIdMapper.mapToApi(obj.getShapeId());
         api.wheelchairAccessible = obj.getWheelchairAccessible();
-        api.bikesAllowed = obj.getBikesAllowed();
+        api.bikesAllowed = BikeAccessMapper.mapToApi(obj.getBikesAllowed());
         api.fareId = obj.getFareId();
 
         return api;
@@ -42,18 +43,13 @@ public class TripMapper {
 
         // TODO OTP2 - All ids should be fully qualified including feed scope id.
         api.shapeId = shape == null ? null : shape.getId();
-        api.direction = directionToApi(domain.getDirectionId());
+        api.direction = domain.getDirection().gtfsCode;
 
         return api;
     }
 
-    public static List<ApiTripShort> mapToApiShort(Collection<Trip> domain) {
+    public static List<ApiTripShort> mapToApiShort(Stream<Trip> domain) {
         if(domain == null) { return null; }
-        return domain.stream().map(TripMapper::mapToApiShort).collect(Collectors.toList());
-    }
-
-
-    private static Integer directionToApi(String directionId) {
-        return directionId == null ? null : Integer.parseInt(directionId);
+        return domain.map(TripMapper::mapToApiShort).collect(Collectors.toList());
     }
 }

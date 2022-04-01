@@ -24,6 +24,7 @@ import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.util.PolylineEncoder;
+import org.opentripplanner.util.ProgressTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.opentripplanner.util.ElevationUtils.computeEllipsoidToGeoidDifference;
+import static org.opentripplanner.util.logging.ThrottleLogger.*;
 
 /**
  * THIS CLASS IS MULTI-THREADED
@@ -57,7 +59,14 @@ import static org.opentripplanner.util.ElevationUtils.computeEllipsoidToGeoidDif
  */
 public class ElevationModule implements GraphBuilderModule {
 
-    private static final Logger log = LoggerFactory.getLogger(ElevationModule.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ElevationModule.class);
+
+    /**
+     * Wrap LOG with a Throttle logger for elevation edge warnings, this will prevent thousands
+     * of log events, and just log one message every 3 second.
+     */
+    private static final Logger ELEVATION_EDGE_ERROR_LOG = throttle(LOG);
+
 
     /** The elevation data to be used in calculating elevations. */
     private final ElevationGridCoverageFactory gridCoverageFactory;
@@ -87,11 +96,8 @@ public class ElevationModule implements GraphBuilderModule {
 
     // Keep track of the proportion of elevation fetch operations that fail so we can issue warnings. AtomicInteger is
     // used to provide thread-safe updating capabilities.
-    private AtomicInteger nEdgesProcessed = new AtomicInteger(0);
     private final AtomicInteger nPointsEvaluated = new AtomicInteger(0);
     private final AtomicInteger nPointsOutsideDEM = new AtomicInteger(0);
-    /** keeps track of the total amount of elevation edges for logging purposes */
-    private int totalElevationEdges = Integer.MAX_VALUE;
 
     // the first coordinate in the first StreetWithElevationEdge which is used for initializing coverage instances
     private Coordinate examplarCoordinate;
@@ -114,7 +120,7 @@ public class ElevationModule implements GraphBuilderModule {
     /** Used only when the ElevationModule is requested to be ran with a single thread */
     private Coverage singleThreadedCoverageInterpolator;
 
-    private ThreadLocal<Coverage> coverageInterpolatorThreadLocal = new ThreadLocal<>();
+    private final ThreadLocal<Coverage> coverageInterpolatorThreadLocal = new ThreadLocal<>();
 
     /** used only for testing purposes */
     public ElevationModule(ElevationGridCoverageFactory factory) {
@@ -179,17 +185,16 @@ public class ElevationModule implements GraphBuilderModule {
             try {
                 ObjectInputStream in = new ObjectInputStream(new FileInputStream(cachedElevationsFile));
                 cachedElevations = (HashMap<String, PackedCoordinateSequence>) in.readObject();
-                log.info("Cached elevation data loaded into memory!");
+                LOG.info("Cached elevation data loaded into memory!");
             } catch (IOException | ClassNotFoundException e) {
                 issueStore.add(new Graphwide(
                     String.format("Cached elevations file could not be read in due to error: %s!", e.getMessage())));
             }
         }
-        log.info("Setting street elevation profiles from digital elevation model...");
+        LOG.info("Setting street elevation profiles from digital elevation model...");
 
-        // At first, set the totalElevationEdges to the total number of edges in the graph.
-        totalElevationEdges = graph.countEdges();
         List<StreetWithElevationEdge> streetsWithElevationEdges = new LinkedList<>();
+
         for (Vertex gv : graph.getVertices()) {
             for (Edge ee : gv.getOutgoing()) {
                 if (ee instanceof StreetWithElevationEdge) {
@@ -206,29 +211,39 @@ public class ElevationModule implements GraphBuilderModule {
                 }
             }
         }
-        // update this value to the now-known amount of edges that are StreetWithElevation edges
-        totalElevationEdges = streetsWithElevationEdges.size();
+
+        // Keeps track of the total amount of elevation edges for logging purposes
+        int totalElevationEdges = streetsWithElevationEdges.size();
+
+        var progress = ProgressTracker.track("Set elevation", 25_000, totalElevationEdges);
 
         if (multiThreadElevationCalculations) {
             // Multi-threaded execution
-            streetsWithElevationEdges.parallelStream().forEach(ee -> processEdgeWithProgress(ee));
+            streetsWithElevationEdges.parallelStream().forEach(ee -> processEdgeWithProgress(ee, progress));
         } else {
             // If using just a single thread, process each edge inline
             for (StreetWithElevationEdge ee : streetsWithElevationEdges) {
-                processEdgeWithProgress(ee);
+                processEdgeWithProgress(ee, progress);
             }
         }
 
-        double failurePercentage = nPointsOutsideDEM.get() / nPointsEvaluated.get() * 100;
-        if (failurePercentage > 50) {
-            issueStore.add(new Graphwide(
-                String.format(
-                    "Fetching elevation failed at %d/%d points (%d%%)",
-                    nPointsOutsideDEM, nPointsEvaluated, failurePercentage
-                )
-            ));
-            log.warn("Elevation is missing at a large number of points. DEM may be for the wrong region. " +
-                "If it is unprojected, perhaps the axes are not in (longitude, latitude) order.");
+        int nPoints = nPointsEvaluated.get();
+        if(nPoints > 0) {
+            double failurePercentage = (double) nPointsOutsideDEM.get() / nPoints * 100.0;
+            if (failurePercentage > 50) {
+                issueStore.add(
+                    new Graphwide(
+                        String.format(
+                                "Fetching elevation failed at %d/%d points (%.1f%%)",
+                                nPointsOutsideDEM.get(), nPoints, failurePercentage
+                        )
+                    )
+                );
+                LOG.warn(
+                    "Elevation is missing at a large number of points. DEM may be for the wrong region. "
+                        + "If it is unprojected, perhaps the axes are not in (longitude, latitude) order."
+                );
+            }
         }
 
         // Iterate again to find edges that had elevation calculated.
@@ -252,7 +267,7 @@ public class ElevationModule implements GraphBuilderModule {
                 out.writeObject(newCachedElevations);
                 out.close();
             } catch (IOException e) {
-                log.error(e.getMessage());
+                LOG.error(e.getMessage());
                 issueStore.add(new Graphwide("Failed to write cached elevation file!"));
             }
         }
@@ -261,7 +276,7 @@ public class ElevationModule implements GraphBuilderModule {
         assignMissingElevations(graph, edgesWithCalculatedElevations, extraElevation);
     }
 
-    class ElevationRepairState {
+    static class ElevationRepairState {
         /* This uses an intuitionist approach to elevation inspection */
         public StreetEdge backEdge;
 
@@ -289,7 +304,7 @@ public class ElevationModule implements GraphBuilderModule {
      */
     private void assignMissingElevations(Graph graph, List<StreetEdge> edgesWithElevation, HashMap<Vertex, Double> knownElevations) {
 
-        log.debug("Assigning missing elevations");
+        LOG.debug("Assigning missing elevations");
 
         BinHeap<ElevationRepairState> pq = new BinHeap<ElevationRepairState>();
 
@@ -311,7 +326,7 @@ public class ElevationModule implements GraphBuilderModule {
                         vertex, elevation - getApproximateEllipsoidToGeoidDifference(vertex.getY(), vertex.getX())
                     );
                 } catch (TransformException e) {
-                    log.error(
+                    LOG.error(
                         "Error processing elevation for known elevation at vertex: {} due to error: {}",
                         vertex,
                         e
@@ -328,16 +343,26 @@ public class ElevationModule implements GraphBuilderModule {
 
             if (!elevations.containsKey(e.getFromVertex())) {
                 double firstElevation = profile.getOrdinate(0, 1);
-                ElevationRepairState state = new ElevationRepairState(null, null,
-                        e.getFromVertex(), 0, firstElevation);
+                ElevationRepairState state = new ElevationRepairState(
+                    null,
+                    null,
+                    e.getFromVertex(),
+                    0,
+                    firstElevation
+                );
                 pq.insert(state, 0);
                 elevations.put(e.getFromVertex(), firstElevation);
             }
 
             if (!elevations.containsKey(e.getToVertex())) {
                 double lastElevation = profile.getOrdinate(profile.size() - 1, 1);
-                ElevationRepairState state = new ElevationRepairState(null, null, e.getToVertex(),
-                        0, lastElevation);
+                ElevationRepairState state = new ElevationRepairState(
+                    null,
+                    null,
+                    e.getToVertex(),
+                    0,
+                    lastElevation
+                );
                 pq.insert(state, 0);
                 elevations.put(e.getToVertex(), lastElevation);
             }
@@ -379,8 +404,13 @@ public class ElevationModule implements GraphBuilderModule {
                     }
                 } else {
                     // continue
-                    ElevationRepairState newState = new ElevationRepairState(edge, state, tov,
-                            e.getDistanceMeters() + state.distance, state.initialElevation);
+                    ElevationRepairState newState = new ElevationRepairState(
+                        edge,
+                        state,
+                        tov,
+                        e.getDistanceMeters() + state.distance,
+                        state.initialElevation
+                    );
                     pq.insert(newState, e.getDistanceMeters() + state.distance);
                 }
             } // end loop over outgoing edges
@@ -402,8 +432,13 @@ public class ElevationModule implements GraphBuilderModule {
                     }
                 } else {
                     // continue
-                    ElevationRepairState newState = new ElevationRepairState(edge, state, fromv,
-                            e.getDistanceMeters() + state.distance, state.initialElevation);
+                    ElevationRepairState newState = new ElevationRepairState(
+                        edge,
+                        state,
+                        fromv,
+                        e.getDistanceMeters() + state.distance,
+                        state.initialElevation
+                    );
                     pq.insert(newState, e.getDistanceMeters() + state.distance);
                 }
             } // end loop over incoming edges
@@ -451,8 +486,9 @@ public class ElevationModule implements GraphBuilderModule {
                     Double toElevation = elevations.get(edge.getToVertex());
 
                     if (fromElevation == null || toElevation == null) {
-                        if (!edge.isElevationFlattened() && !edge.isSlopeOverride())
-                            log.warn("Unexpectedly missing elevation for edge " + edge);
+                        if (!edge.isElevationFlattened() && !edge.isSlopeOverride()) {
+                            LOG.warn("Unexpectedly missing elevation for edge " + edge);
+                        }
                         continue;
                     }
 
@@ -477,12 +513,11 @@ public class ElevationModule implements GraphBuilderModule {
     /**
      * Calculate the elevation for a single street edge. After the calculation is complete, update the current progress.
      */
-    private void processEdgeWithProgress(StreetWithElevationEdge ee) {
+    private void processEdgeWithProgress(StreetWithElevationEdge ee, ProgressTracker progress) {
         processEdge(ee);
-        int curNumProcessed = nEdgesProcessed.addAndGet(1);
-        if (curNumProcessed % 50_000 == 0) {
-            log.info("set elevation on {}/{} edges", curNumProcessed, totalElevationEdges);
-        }
+        // Keep lambda to get correct line number in log
+        //noinspection Convert2MethodRef
+        progress.step(m -> LOG.info(m));
     }
 
     /**
@@ -577,8 +612,11 @@ public class ElevationModule implements GraphBuilderModule {
                     coordList.toArray(coordArr));
 
             setEdgeElevationProfile(ee, elevPCS, graph);
-        } catch (PointOutsideCoverageException | TransformException e) {
-            log.debug("Error processing elevation for edge: {} due to error: {}", ee, e);
+        } catch (ElevationLookupException e) {
+            // only catch known elevation lookup exceptions
+            ELEVATION_EDGE_ERROR_LOG.warn(
+                    "Error processing elevation for edge: {} due to error: {}", ee, e
+            );
         }
     }
 
@@ -604,11 +642,15 @@ public class ElevationModule implements GraphBuilderModule {
                     // The Coverage instance relies on some synchronized static methods shared across all threads that
                     // can cause deadlocks if not fully initialized. Therefore, make a single request for the first
                     // point on the edge to initialize these other items.
-                    double[] dummy = new double[1];
-                    coverage.evaluate(
-                        new DirectPosition2D(GeometryUtils.WGS84_XY, examplarCoordinate.x, examplarCoordinate.y),
-                        dummy
-                    );
+                    try {
+                        getElevation(coverage, examplarCoordinate);
+                    } catch (ElevationLookupException e) {
+                        ELEVATION_EDGE_ERROR_LOG.warn(
+                            "Error processing elevation for coordinate: {} due to error: {}",
+                            examplarCoordinate,
+                            e
+                        );
+                    }
                     coverageInterpolatorThreadLocal.set(coverage);
                 }
             }
@@ -636,8 +678,26 @@ public class ElevationModule implements GraphBuilderModule {
      * @param c the coordinate (NAD83)
      * @return elevation in meters
      */
-    private double getElevation(Coverage coverage, Coordinate c) throws PointOutsideCoverageException, TransformException {
-        return getElevation(coverage, c.x, c.y);
+    private double getElevation(Coverage coverage, Coordinate c) throws ElevationLookupException {
+        try {
+            return getElevation(coverage, c.x, c.y);
+        } catch (ArrayIndexOutOfBoundsException | PointOutsideCoverageException | TransformException e) {
+            // Each of the above exceptions can occur when finding the elevation at a coordinate.
+            // - The ArrayIndexOutOfBoundsException seems to occur at the edges of some elevation tiles that
+            //     might have areas with NoData. See https://github.com/opentripplanner/OpenTripPlanner/issues/2792
+            // - The PointOutsideCoverageException can be thrown for points that are outside of the elevation tile area.
+            // - The TransformException can occur when trying to compute the EllipsoidToGeoidDifference.
+            throw new ElevationLookupException(e);
+        }
+    }
+
+    /**
+     * A custom exception wrapper for all known elevation lookup exceptions
+     */
+    class ElevationLookupException extends Exception {
+        public ElevationLookupException(Exception e) {
+            super(e);
+        }
     }
 
     /**
@@ -703,12 +763,16 @@ public class ElevationModule implements GraphBuilderModule {
         // check for the existence of cached elevation data.
         if (readCachedElevations) {
             if (Files.exists(cachedElevationsFile.toPath())) {
-                log.info("Cached elevations file found!");
+                LOG.info("Cached elevations file found!");
             } else {
-                log.warn("No cached elevations file found or read access not allowed! Unable to load in cached elevations. This could take a while...");
+                LOG.warn(
+                        "No cached elevations file found at {} or read access not allowed! Unable "
+                        + "to load in cached elevations. This could take a while...",
+                        cachedElevationsFile.toPath().toAbsolutePath()
+                );
             }
         } else {
-            log.warn("Not using cached elevations! This could take a while...");
+            LOG.warn("Not using cached elevations! This could take a while...");
         }
     }
 

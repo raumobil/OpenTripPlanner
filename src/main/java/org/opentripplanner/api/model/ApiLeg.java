@@ -56,6 +56,16 @@ public class ApiLeg {
      */
     public Double distance = null;
 
+     /**
+      * If a generalized cost is used in the routing algorithm, this should be the "delta" cost
+      * computed by the algorithm for the section this leg account for. This is relevant for anyone
+      * who want to debug an search and tuning the system. The unit should be equivalent to the cost
+      * of "one second of transit".
+      * <p>
+      * -1 indicate that the cost is not set/computed.
+      */
+     public int generalizedCost = -1;
+
     /**
      * Is this leg a traversing pathways?
      */
@@ -193,22 +203,23 @@ public class ApiLeg {
 
     public String alightRule;
 
+    public ApiBookingInfo pickupBookingInfo;
+
+    public ApiBookingInfo dropOffBookingInfo;
+
     public Boolean rentedBike;
 
-    /**
+     /**
+      * Is this leg walking with a bike?
+      *
+      * @deprecated This is always null or false, the information is now stored per walk step
+      */
+    public Boolean walkingBike;
+
+     /**
      * The leg's duration in seconds
      */
     public double getDuration() {
         return endTime.getTimeInMillis()/1000.0 - startTime.getTimeInMillis()/1000.0;
-    }
-
-    public void setTimeZone(TimeZone timeZone) {
-        Calendar calendar = Calendar.getInstance(timeZone);
-        calendar.setTime(startTime.getTime());
-        startTime = calendar;
-        calendar = Calendar.getInstance(timeZone);
-        calendar.setTime(endTime.getTime());
-        endTime = calendar;
-        agencyTimeZoneOffset = timeZone.getOffset(startTime.getTimeInMillis());
     }
  }

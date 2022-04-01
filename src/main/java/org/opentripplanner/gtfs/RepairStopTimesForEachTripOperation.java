@@ -2,7 +2,11 @@ package org.opentripplanner.gtfs;
 
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.ext.flex.trip.FlexTrip;
 import org.opentripplanner.graph_builder.DataImportIssue;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.HopSpeedFast;
@@ -15,16 +19,13 @@ import org.opentripplanner.model.Stop;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.model.Trip;
 import org.opentripplanner.model.TripStopTimes;
+import org.opentripplanner.util.OTPFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
 /**
  * This class is responsible for cleaning stop times, removing duplicates, correcting bad data
- * and so on. This do only apply to GTFS imports.
+ * and so on. This only applies to GTFS imports.
  */
 public class RepairStopTimesForEachTripOperation {
     private static final Logger LOG = LoggerFactory.getLogger(RepairStopTimesForEachTripOperation.class);
@@ -52,8 +53,11 @@ public class RepairStopTimesForEachTripOperation {
             /* Fetch the stop times for this trip. Copy the list since it's immutable. */
             List<StopTime> stopTimes = new ArrayList<>(stopTimesByTrip.get(trip));
 
-            /* Remove stoptimes without stops */
-            stopTimes.removeIf(st -> !(st.getStop() instanceof Stop));
+            // if we don't have flex routing enabled then remove all the flex locations and location
+            // groups
+            if(OTPFeature.FlexRouting.isOff()) {
+                stopTimes.removeIf(st -> !(st.getStop() instanceof Stop));
+            }
 
             /* Stop times frequently contain duplicate, missing, or incorrect entries. Repair them. */
             TIntList removedStopSequences = removeRepeatedStops(stopTimes);
@@ -61,6 +65,7 @@ public class RepairStopTimesForEachTripOperation {
                 issueStore.add(new RepeatedStops(trip, removedStopSequences));
             }
             filterStopTimes(stopTimes);
+
             interpolateStopTimes(stopTimes);
 
             stopTimesByTrip.replace(trip, stopTimes);
@@ -92,12 +97,14 @@ public class RepairStopTimesForEachTripOperation {
                     // keep the arrival time of the previous stop, unless it didn't have an arrival time, in which case
                     // replace it with the arrival time of this stop time
                     // This is particularly important at the last stop in a route (see issue #2220)
-                    if (prev.getArrivalTime() == StopTime.MISSING_VALUE)
+                    if (prev.getArrivalTime() == StopTime.MISSING_VALUE) {
                         prev.setArrivalTime(st.getArrivalTime());
+                    }
 
                     // prefer to replace with the departure time of this stop time, unless this stop time has no departure time
-                    if (st.getDepartureTime() != StopTime.MISSING_VALUE)
+                    if (st.getDepartureTime() != StopTime.MISSING_VALUE) {
                         prev.setDepartureTime(st.getDepartureTime());
+                    }
 
                     it.remove();
                     stopSequencesRemoved.add(st.getStopSequence());
@@ -256,7 +263,7 @@ public class RepairStopTimesForEachTripOperation {
 
             /* Interpolate, if necessary, the times of non-timepoint stops */
             /* genuine interpolation needed */
-            if (!(st0.isDepartureTimeSet() && st0.isArrivalTimeSet())) {
+            if (!(st0.isDepartureTimeSet() && st0.isArrivalTimeSet()) && !FlexTrip.isFlexStop(st0.getStop())) {
                 // figure out how many such stops there are in a row.
                 int j;
                 StopTime st = null;

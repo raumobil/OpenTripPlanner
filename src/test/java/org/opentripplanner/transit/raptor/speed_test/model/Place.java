@@ -3,6 +3,8 @@ package org.opentripplanner.transit.raptor.speed_test.model;
 import org.opentripplanner.model.FeedScopedId;
 import org.opentripplanner.model.WgsCoordinate;
 
+import javax.annotation.Nullable;
+
 /**
  * A Place is where a journey starts or ends, or a transit stop along the way.
  */
@@ -17,12 +19,17 @@ public class Place {
     /** This is the stop index in the RaptorTransitData */
     public final int rrStopIndex;
 
-    public Place(org.opentripplanner.model.Stop stop, int rrStopIndex) {
+    public Place(org.opentripplanner.model.StopLocation stop, int rrStopIndex) {
         this(stop.getName(), stop.getId(), stop.getCoordinate(), rrStopIndex);
     }
 
     public Place(String name, String feedId, String stopId, Double lat, Double lon) {
-        this(name, new FeedScopedId(feedId, stopId), new WgsCoordinate(lat, lon), -1);
+        this(
+            name,
+            id(feedId, stopId),
+            new WgsCoordinate(lat, lon),
+            -1
+        );
     }
 
 
@@ -31,5 +38,11 @@ public class Place {
         this.stopId = stopId;
         this.coordinate = coordinate;
         this.rrStopIndex = rrStopIndex;
+    }
+
+    @Nullable
+    private static FeedScopedId id(String feedId, String id) {
+        if(id == null || id.isBlank()) { return null; }
+        return new FeedScopedId(feedId, id);
     }
 }
