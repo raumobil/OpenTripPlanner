@@ -8,6 +8,7 @@ import graphql.schema.GraphQLNonNull;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLTypeReference;
+import org.opentripplanner.ext.flex.trip.FlexTrip;
 import org.opentripplanner.ext.transmodelapi.mapping.TransitIdMapper;
 import org.opentripplanner.ext.transmodelapi.model.EnumTypes;
 import org.opentripplanner.ext.transmodelapi.model.TransmodelTransportSubmode;
@@ -36,7 +37,8 @@ public class LineType {
       GraphQLObjectType presentationType,
       GraphQLOutputType journeyPatternType,
       GraphQLOutputType serviceJourneyType,
-      GraphQLOutputType ptSituationElementType
+      GraphQLOutputType ptSituationElementType,
+      GraphQLOutputType brandingType
   ) {
     return GraphQLObjectType.newObject()
             .name(NAME)
@@ -57,6 +59,10 @@ public class LineType {
                     .dataFetcher(environment -> (((Route) environment.getSource()).getOperator()))
                     .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
+                    .name("branding")
+                    .type(brandingType)
+                    .dataFetcher(environment -> ((Route) environment.getSource()).getBranding()))
+            .field(GraphQLFieldDefinition.newFieldDefinition()
                     .name("publicCode")
                     .type(Scalars.GraphQLString)
                     .description("Publicly announced code for line, differentiating it from other lines for the same operator.")
@@ -75,8 +81,10 @@ public class LineType {
             .field(GraphQLFieldDefinition.newFieldDefinition()
                     .name("transportSubmode")
                     .type(EnumTypes.TRANSPORT_SUBMODE)
-                    .description("NOT IMPLEMENTED")
-                    .dataFetcher(environment -> TransmodelTransportSubmode.UNDEFINED)
+                    .dataFetcher(environment -> {
+                        final String netexSubMode = ((Route) environment.getSource()).getNetexSubmode();
+                        return netexSubMode != null ? TransmodelTransportSubmode.fromValue(netexSubMode): null;
+                    })
                     .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
                     .name("description")
@@ -126,8 +134,7 @@ public class LineType {
                           .getPatternsForRoute()
                           .get(environment.getSource())
                           .stream()
-                          .map(TripPattern::getTrips)
-                          .flatMap(Collection::stream)
+                          .flatMap(TripPattern::scheduledTripsAsStream)
                           .distinct()
                           .collect(Collectors.toList());
 
@@ -136,6 +143,7 @@ public class LineType {
                         result.addAll(GqlUtil.getRoutingService(environment).getFlexIndex().tripById
                             .values()
                             .stream()
+                            .map(FlexTrip::getTrip)
                             .filter(t -> t.getRoute().equals((Route) environment.getSource()))
                             .collect(Collectors.toList()));
                       }
@@ -154,10 +162,9 @@ public class LineType {
                     .name("situations")
                     .description("Get all situations active for the line.")
                     .type(new GraphQLNonNull(new GraphQLList(ptSituationElementType)))
-                .dataFetcher(environment -> {
-                  return GqlUtil.getRoutingService(environment).getTransitAlertService().getRouteAlerts(
-                      environment.getSource());
-                })
+                .dataFetcher(environment -> GqlUtil.getRoutingService(environment)
+                        .getTransitAlertService()
+                        .getRouteAlerts(((Route) environment.getSource()).getId()))
                 .build())
             .field(GraphQLFieldDefinition.newFieldDefinition()
                 .name("flexibleLineType")
@@ -169,6 +176,7 @@ public class LineType {
                 .name("bookingArrangements")
                 .description("Booking arrangements for flexible line.")
                 .type(bookingArrangementType)
+                .deprecate("BookingArrangements are defined per stop, and can be found under `passingTimes` or `estimatedCalls`")
                 .dataFetcher(environment -> null)
                 .build())
             .build();

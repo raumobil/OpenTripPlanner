@@ -5,21 +5,24 @@ import static org.opentripplanner.PolylineAssert.assertThatPolylinesAreEqual;
 import java.time.Instant;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.locationtech.jts.geom.Geometry;
 import org.opentripplanner.ConstantsForTests;
 import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.routing.algorithm.mapping.GraphPathToItineraryMapper;
 import org.opentripplanner.routing.api.request.RoutingRequest;
+import org.opentripplanner.routing.core.BicycleOptimizeType;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.impl.GraphPathFinder;
 import org.opentripplanner.standalone.config.RouterConfig;
 import org.opentripplanner.standalone.server.Router;
+import org.opentripplanner.util.PolylineEncoder;
 
 
 public class BicycleRoutingTest {
 
-    static long dateTime = Instant.now().toEpochMilli();
+    static final Instant dateTime = Instant.now();
     Graph herrenbergGraph = ConstantsForTests.buildOsmGraph(ConstantsForTests.HERRENBERG_OSM);
 
     /**
@@ -35,7 +38,7 @@ public class BicycleRoutingTest {
         assertThatPolylinesAreEqual(polyline1, "_srgHutau@h@B|@Jf@BdAG?\\JT@jA?DSp@_@fFsAT{@DBpC");
 
         var polyline2 = computePolyline(herrenbergGraph, fritzLeharStr, mozartStr);
-        assertThatPolylinesAreEqual(polyline2, "{qrgH{aau@CqCz@ErAU^gFRq@?EAkAKU?]eAFg@C}@Ki@C");
+        assertThatPolylinesAreEqual(polyline2, "{qrgH{aau@CqCz@ErAU^gFRq@?EAkAKUeACg@A_AM_AEDQF@H?");
     }
 
     /**
@@ -56,9 +59,10 @@ public class BicycleRoutingTest {
 
     private static String computePolyline(Graph graph, GenericLocation from, GenericLocation to) {
         RoutingRequest request = new RoutingRequest();
-        request.dateTime = dateTime;
+        request.setDateTime(dateTime);
         request.from = from;
         request.to = to;
+        request.bicycleOptimizeType = BicycleOptimizeType.QUICK;
 
         request.streetSubRequestModes = new TraverseModeSet(TraverseMode.BICYCLE);
         request.setRoutingContext(graph);
@@ -66,9 +70,10 @@ public class BicycleRoutingTest {
         var gpf = new GraphPathFinder(new Router(graph, RouterConfig.DEFAULT));
         var paths = gpf.graphPathFinderEntryPoint(request);
 
-        var itineraries = GraphPathToItineraryMapper.mapItineraries(paths, request);
+        var itineraries = GraphPathToItineraryMapper.mapItineraries(paths);
         // make sure that we only get BICYLE legs
-        itineraries.forEach(i -> i.legs.forEach(l -> Assertions.assertEquals(l.mode, TraverseMode.BICYCLE)));
-        return itineraries.get(0).legs.get(0).legGeometry.getPoints();
+        itineraries.forEach(i -> i.legs.forEach(l -> Assertions.assertEquals(l.getMode(), TraverseMode.BICYCLE)));
+        Geometry legGeometry = itineraries.get(0).legs.get(0).getLegGeometry();
+        return PolylineEncoder.createEncodings(legGeometry).getPoints();
     }
 }

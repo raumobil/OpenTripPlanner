@@ -1,10 +1,21 @@
 package org.opentripplanner.updater.stoptime;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.opentripplanner.gtfs.GtfsContextBuilder.contextBuilder;
+
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.transit.realtime.GtfsRealtime.TripDescriptor;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeEvent;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Calendar;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -13,7 +24,7 @@ import org.opentripplanner.ConstantsForTests;
 import org.opentripplanner.graph_builder.module.geometry.GeometryAndBlockProcessor;
 import org.opentripplanner.gtfs.GtfsContext;
 import org.opentripplanner.model.FeedScopedId;
-import org.opentripplanner.model.Stop;
+import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.Timetable;
 import org.opentripplanner.model.TimetableSnapshot;
 import org.opentripplanner.model.Trip;
@@ -23,18 +34,6 @@ import org.opentripplanner.model.calendar.ServiceDate;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.trippattern.RealTimeState;
 import org.opentripplanner.routing.trippattern.TripTimes;
-
-import java.text.ParseException;
-import java.util.Arrays;
-import java.util.Calendar;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.opentripplanner.gtfs.GtfsContextBuilder.contextBuilder;
 
 /**
  * TODO OTP2 - Test is too close to the implementation and will need to be reimplemented.
@@ -111,8 +110,8 @@ public class TimetableSnapshotSourceTest {
         final FeedScopedId tripId2 = new FeedScopedId(feedId, "1.2");
         final Trip trip = graph.index.getTripForId().get(tripId);
         final TripPattern pattern = graph.index.getPatternForTrip().get(trip);
-        final int tripIndex = pattern.scheduledTimetable.getTripIndex(tripId);
-        final int tripIndex2 = pattern.scheduledTimetable.getTripIndex(tripId2);
+        final int tripIndex = pattern.getScheduledTimetable().getTripIndex(tripId);
+        final int tripIndex2 = pattern.getScheduledTimetable().getTripIndex(tripId2);
 
         updater.applyTripUpdates(graph, fullDataset, Arrays.asList(TripUpdate.parseFrom(cancellation)), feedId);
 
@@ -125,8 +124,8 @@ public class TimetableSnapshotSourceTest {
 
         final TripTimes tripTimes = forToday.getTripTimes(tripIndex);
         for (int i = 0; i < tripTimes.getNumStops(); i++) {
-            assertEquals(TripTimes.UNAVAILABLE, tripTimes.getDepartureTime(i));
-            assertEquals(TripTimes.UNAVAILABLE, tripTimes.getArrivalTime(i));
+            assertEquals(PickDrop.CANCELLED, pattern.getBoardType(i));
+            assertEquals(PickDrop.CANCELLED, pattern.getAlightType(i));
         }
         assertEquals(RealTimeState.CANCELED, tripTimes.getRealTimeState());
     }
@@ -137,8 +136,8 @@ public class TimetableSnapshotSourceTest {
         final FeedScopedId tripId2 = new FeedScopedId(feedId, "1.2");
         final Trip trip = graph.index.getTripForId().get(tripId);
         final TripPattern pattern = graph.index.getPatternForTrip().get(trip);
-        final int tripIndex = pattern.scheduledTimetable.getTripIndex(tripId);
-        final int tripIndex2 = pattern.scheduledTimetable.getTripIndex(tripId2);
+        final int tripIndex = pattern.getScheduledTimetable().getTripIndex(tripId);
+        final int tripIndex2 = pattern.getScheduledTimetable().getTripIndex(tripId2);
 
         final TripDescriptor.Builder tripDescriptorBuilder = TripDescriptor.newBuilder();
 
@@ -268,7 +267,7 @@ public class TimetableSnapshotSourceTest {
 
         // THEN
         // Find new pattern in graph starting from stop A
-        Stop stopA = graph.index.getStopForId(new FeedScopedId(feedId, "A"));
+        var stopA = graph.index.getStopForId(new FeedScopedId(feedId, "A"));
         // Get trip pattern of last (most recently added) outgoing edge
         // FIXME create a new test to see that add-trip realtime updates work
         TripPattern tripPattern = null;

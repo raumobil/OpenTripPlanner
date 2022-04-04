@@ -1,13 +1,9 @@
 package org.opentripplanner.routing.graph;
 
-import static org.opentripplanner.model.projectinfo.OtpProjectInfo.projectInfo;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import gnu.trove.list.TDoubleList;
@@ -17,6 +13,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
@@ -34,8 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import javax.annotation.Nullable;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.locationtech.jts.geom.Coordinate;
@@ -46,6 +41,7 @@ import org.opentripplanner.common.geometry.CompactElevationProfile;
 import org.opentripplanner.common.geometry.GraphUtils;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.model.T2;
+import org.opentripplanner.ext.dataoverlay.configuration.DataOverlayParameterBindings;
 import org.opentripplanner.ext.flex.trip.FlexTrip;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.NoFutureDates;
@@ -61,7 +57,7 @@ import org.opentripplanner.model.GroupOfStations;
 import org.opentripplanner.model.MultiModalStation;
 import org.opentripplanner.model.Notice;
 import org.opentripplanner.model.Operator;
-import org.opentripplanner.model.SimpleTransfer;
+import org.opentripplanner.model.PathTransfer;
 import org.opentripplanner.model.Station;
 import org.opentripplanner.model.Stop;
 import org.opentripplanner.model.StopLocation;
@@ -76,14 +72,11 @@ import org.opentripplanner.model.calendar.CalendarService;
 import org.opentripplanner.model.calendar.CalendarServiceData;
 import org.opentripplanner.model.calendar.ServiceDate;
 import org.opentripplanner.model.calendar.impl.CalendarServiceImpl;
-import org.opentripplanner.model.projectinfo.OtpProjectInfo;
 import org.opentripplanner.model.transfer.TransferService;
-import org.opentripplanner.routing.algorithm.raptor.transit.TransitLayer;
-import org.opentripplanner.routing.algorithm.raptor.transit.mappers.TransitLayerUpdater;
-import org.opentripplanner.routing.bike_rental.BikeRentalStationService;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.TransitLayer;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.TransitLayerUpdater;
 import org.opentripplanner.routing.core.intersection_model.IntersectionTraversalCostModel;
 import org.opentripplanner.routing.core.intersection_model.SimpleIntersectionTraversalCostModel;
-import org.opentripplanner.routing.edgetype.EdgeWithCleanup;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.impl.DelegatingTransitAlertServiceImpl;
 import org.opentripplanner.routing.impl.StreetVertexIndex;
@@ -91,6 +84,8 @@ import org.opentripplanner.routing.services.TransitAlertService;
 import org.opentripplanner.routing.services.notes.StreetNotesService;
 import org.opentripplanner.routing.trippattern.Deduplicator;
 import org.opentripplanner.routing.util.ConcurrentPublished;
+import org.opentripplanner.routing.vehicle_parking.VehicleParkingService;
+import org.opentripplanner.routing.vehicle_rental.VehicleRentalStationService;
 import org.opentripplanner.routing.vertextype.TransitStopVertex;
 import org.opentripplanner.updater.GraphUpdaterConfigurator;
 import org.opentripplanner.updater.GraphUpdaterManager;
@@ -111,13 +106,6 @@ public class Graph implements Serializable {
 
     public static final IntersectionTraversalCostModel DEFAULT_INTERSECTION_TRAVERSAL_COST_MODEL
         = new SimpleIntersectionTraversalCostModel(DEFAULT_DRIVING_DIRECTION);
-
-    private final OtpProjectInfo projectInfo = projectInfo();
-
-    // TODO Remove this field, use Router.routerId ?
-    public String routerId;
-
-    private final Map<Edge, List<TurnRestriction>> turnRestrictions = Maps.newHashMap();
 
     public final StreetNotesService streetNotesService = new StreetNotesService();
 
@@ -183,6 +171,7 @@ public class Graph implements Serializable {
     /** List of transit modes that are availible in GTFS data used in this graph**/
     private final HashSet<TransitMode> transitModes = new HashSet<>();
 
+    // TODO OTP2: This is only enabled with static bike rental
     public boolean hasBikeSharing = false;
 
     public boolean hasParkRide = false;
@@ -220,6 +209,12 @@ public class Graph implements Serializable {
     public boolean hasScheduledService = false;
 
     /**
+     * Have bike parks already been linked to the graph. As the linking happens twice if a base
+     * graph is used, we store information on whether bike park linking should be skipped.
+     */
+    public boolean hasLinkedBikeParks = false;
+
+    /**
      * The difference in meters between the WGS84 ellipsoid height and geoid height
      * at the graph's center
      */
@@ -249,7 +244,7 @@ public class Graph implements Serializable {
     public final BiMap<Trip,Trip> interlinedTrips = HashBiMap.create();
 
     /** Pre-generated transfers between all stops. */
-    public final Multimap<StopLocation, SimpleTransfer> transfersByStop = HashMultimap.create();
+    public final Multimap<StopLocation, PathTransfer> transfersByStop = HashMultimap.create();
 
     public Map<FeedScopedId, FlexStopLocation> locationsById = new HashMap<>();
 
@@ -284,6 +279,13 @@ public class Graph implements Serializable {
      * going to fail as soon as we load a base OSM graph and build transit on top of it.
      */
     public long nextSplitNumber = 0;
+
+    /**
+     * DataOverlay Sandbox module parameter bindings configured in the build-config, and needed
+     * when creating the data overlay context when routing.
+     */
+    public DataOverlayParameterBindings dataOverlayParameterBindings;
+
 
     public Graph(Graph basedOn) {
         this();
@@ -344,21 +346,22 @@ public class Graph implements Serializable {
      */
     public void removeEdge(Edge e) {
         if (e != null) {
-            turnRestrictions.remove(e);
             streetNotesService.removeStaticNotes(e);
-
-            if (e instanceof EdgeWithCleanup) ((EdgeWithCleanup) e).detach();
 
             if (e.fromv != null) {
                 e.fromv.removeOutgoing(e);
 
-                for (Edge otherEdge : e.fromv.getIncoming()) {
-                    for (TurnRestriction turnRestriction : getTurnRestrictions(otherEdge)) {
-                        if (turnRestriction.to == e) {
-                            removeTurnRestriction(otherEdge, turnRestriction);
-                        }
-                    }
-                }
+                e.fromv.getIncoming()
+                        .stream()
+                        .filter(StreetEdge.class::isInstance)
+                        .map(StreetEdge.class::cast)
+                        .forEach(otherEdge -> {
+                            for (TurnRestriction turnRestriction : otherEdge.getTurnRestrictions()) {
+                                if (turnRestriction.to == e) {
+                                    otherEdge.removeTurnRestriction(turnRestriction);
+                                }
+                            }
+                        });
 
                 e.fromv = null;
             }
@@ -412,51 +415,7 @@ public class Graph implements Serializable {
             .collect(Collectors.toList());
     }
 
-    /**
-     * Add a {@link TurnRestriction} to the {@link TurnRestriction} {@link List} belonging to an
-     * {@link Edge}. This method is not thread-safe.
-     */
-    public void addTurnRestriction(Edge edge, TurnRestriction turnRestriction) {
-        if (edge == null || turnRestriction == null) return;
-        List<TurnRestriction> turnRestrictions = this.turnRestrictions.get(edge);
-        if (turnRestrictions == null) {
-            turnRestrictions = Lists.newArrayList();
-            this.turnRestrictions.put(edge, turnRestrictions);
-        }
-        turnRestrictions.add(turnRestriction);
-    }
 
-    /**
-     * Remove a {@link TurnRestriction} from the {@link TurnRestriction} {@link List} belonging to
-     * an {@link Edge}. This method is not thread-safe.
-     */
-    public void removeTurnRestriction(Edge edge, TurnRestriction turnRestriction) {
-        if (edge == null || turnRestriction == null) return;
-        List<TurnRestriction> turnRestrictions = this.turnRestrictions.get(edge);
-        if (turnRestrictions != null && turnRestrictions.contains(turnRestriction)) {
-            if (turnRestrictions.size() < 2) {
-                this.turnRestrictions.remove(edge);
-            } else {
-                turnRestrictions.remove(turnRestriction);
-            }
-        }
-    }
-
-    /**
-     * Get the {@link TurnRestriction} {@link List} that belongs to an {@link Edge} and return an
-     * immutable copy. This method is thread-safe when used by itself, but not if addTurnRestriction
-     * or removeTurnRestriction is called concurrently.
-     * @return The {@link TurnRestriction} {@link List} that belongs to the {@link Edge}
-     */
-    public List<TurnRestriction> getTurnRestrictions(Edge edge) {
-        if (edge != null) {
-            List<TurnRestriction> turnRestrictions = this.turnRestrictions.get(edge);
-            if (turnRestrictions != null) {
-                return ImmutableList.copyOf(turnRestrictions);
-            }
-        }
-        return Collections.emptyList();
-    }
 
     /**
      * Return only the StreetEdges in the graph.
@@ -562,10 +521,12 @@ public class Graph implements Serializable {
                 }
                 // assume feed is unreliable after midnight on last service day
                 long u = t + SEC_IN_DAY;
-                if (t < this.transitServiceStarts)
+                if (t < this.transitServiceStarts) {
                     this.transitServiceStarts = t;
-                if (u > this.transitServiceEnds)
+                }
+                if (u > this.transitServiceEnds) {
                     this.transitServiceEnds = u;
+                }
             }
         }
         for (String agency : agencies) {
@@ -576,7 +537,8 @@ public class Graph implements Serializable {
     }
 
     // Check to see if we have transit information for a given date
-    public boolean transitFeedCovers(long t) {
+    public boolean transitFeedCovers(Instant time) {
+        long t = time.getEpochSecond();
         return t >= this.transitServiceStarts && t < this.transitServiceEnds;
     }
 
@@ -632,7 +594,7 @@ public class Graph implements Serializable {
         LOG.debug("Rebuilding edge and vertex indices.");
         for (TripPattern tp : tripPatternForId.values()) {
             // Skip frequency-based patterns which have no timetable (null)
-            if (tp != null) tp.scheduledTimetable.finish();
+            if (tp != null) tp.getScheduledTimetable().finish();
         }
         // TODO: Move this ^ stuff into the graph index
         this.index = new GraphIndex(this);
@@ -647,6 +609,21 @@ public class Graph implements Serializable {
             }
         }
         return this.calendarService;
+    }
+
+
+    public CalendarServiceData getCalendarDataService() {
+        CalendarServiceData calendarServiceData;
+        if (this.hasService(CalendarServiceData.class)) {
+            calendarServiceData = this.getService(CalendarServiceData.class);
+        } else {
+            calendarServiceData = new CalendarServiceData();
+        }
+        return calendarServiceData;
+    }
+
+    public void clearCachedCalenderService() {
+        this.calendarService = null;
     }
 
     public StreetVertexIndex getStreetIndex() {
@@ -896,7 +873,7 @@ public class Graph implements Serializable {
         return transitAlertService;
     }
 
-    private Collection<Stop> getStopsForId(FeedScopedId id) {
+    private Collection<StopLocation> getStopsForId(FeedScopedId id) {
 
         // GroupOfStations
         GroupOfStations groupOfStations = groupOfStationsById.get(id);
@@ -916,7 +893,7 @@ public class Graph implements Serializable {
             return station.getChildStops();
         }
         // Single stop
-        Stop stop = index.getStopForId(id);
+        var stop = index.getStopForId(id);
         if (stop != null) {
             return Collections.singleton(stop);
         }
@@ -930,7 +907,7 @@ public class Graph implements Serializable {
      * @return The associated TransitStopVertex or all underlying TransitStopVertices
      */
     public Set<Vertex> getStopVerticesById(FeedScopedId id) {
-        Collection<Stop> stops = getStopsForId(id);
+        var stops = getStopsForId(id);
 
         if (stops == null) {
             return null;
@@ -950,8 +927,12 @@ public class Graph implements Serializable {
         return services;
     }
 
-    public BikeRentalStationService getBikerentalStationService() {
-        return getService(BikeRentalStationService.class);
+    public VehicleRentalStationService getVehicleRentalStationService() {
+        return getService(VehicleRentalStationService.class);
+    }
+
+    public VehicleParkingService getVehicleParkingService() {
+        return getService(VehicleParkingService.class);
     }
 
     public Collection<Notice> getNoticesByEntity(TransitEntity entity) {
@@ -972,7 +953,7 @@ public class Graph implements Serializable {
     }
 
     /** Get all stops within a given bounding box. */
-    public Collection<Stop> getStopsByBoundingBox(double minLat, double minLon, double maxLat, double maxLon) {
+    public Collection<StopLocation> getStopsByBoundingBox(double minLat, double minLon, double maxLat, double maxLon) {
         Envelope envelope = new Envelope(
                 new Coordinate(minLon, minLat),
                 new Coordinate(maxLon, maxLat)
@@ -1009,7 +990,7 @@ public class Graph implements Serializable {
         return serviceCodes;
     }
 
-    public Collection<SimpleTransfer> getTransfersByStop(StopLocation stop) {
+    public Collection<PathTransfer> getTransfersByStop(StopLocation stop) {
         return transfersByStop.get(stop);
     }
 

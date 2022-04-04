@@ -1,27 +1,24 @@
 package org.opentripplanner.routing.algorithm.astar;
 
 import com.beust.jcommander.internal.Lists;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import org.opentripplanner.common.pqueue.BinHeap;
 import org.opentripplanner.routing.algorithm.astar.strategies.RemainingWeightHeuristic;
 import org.opentripplanner.routing.algorithm.astar.strategies.SearchTerminationStrategy;
 import org.opentripplanner.routing.algorithm.astar.strategies.SkipEdgeStrategy;
-import org.opentripplanner.routing.core.RoutingContext;
 import org.opentripplanner.routing.api.request.RoutingRequest;
+import org.opentripplanner.routing.core.RoutingContext;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.util.time.DateUtils;
-import org.opentripplanner.util.monitoring.MonitoringStore;
-import org.opentripplanner.util.monitoring.MonitoringStoreFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
 
 /**
  * Find the shortest path between graph vertices using A*.
@@ -33,8 +30,6 @@ import java.util.List;
 public class AStar {
 
     private static final Logger LOG = LoggerFactory.getLogger(AStar.class);
-    // FIXME this is not really a factory, it's a way to fake a global variable. This should be stored at the OTPServer level.
-    private static final MonitoringStore store = MonitoringStoreFactory.getStore();
 
     private boolean verbose = false;
 
@@ -258,7 +253,7 @@ public class AStar {
 
                 /* Break out of the search if we've found the requested number of paths. */
                 // TODO Refactor. This check for getNumItineraries always returns 1
-                if (runState.targetAcceptedStates.size() >= runState.options.getNumItineraries()) {
+                if (runState.targetAcceptedStates.size() >= runState.options.getNumItinerariesForDirectStreetSearch()) {
                     LOG.debug("total vertices visited {}", runState.nVisited);
                     break;
                 }
@@ -280,7 +275,6 @@ public class AStar {
             spt = runState.spt;
         }
         
-        storeMemory();
         return spt;
     }
     
@@ -306,15 +300,6 @@ public class AStar {
         }
         
         return spt;
-    }
-
-    private void storeMemory() {
-        if (store.isMonitoring("memoryUsed")) {
-            System.gc();
-            long memoryUsed = Runtime.getRuntime().totalMemory() -
-                    Runtime.getRuntime().freeMemory();
-            store.setLongMax("memoryUsed", memoryUsed);
-        }
     }
 
     public void setTraverseVisitor(TraverseVisitor traverseVisitor) {

@@ -3,6 +3,7 @@ package org.opentripplanner.ext.flex;
 import org.opentripplanner.ext.flex.trip.FlexTrip;
 import org.opentripplanner.ext.flex.trip.ScheduledDeviatedTrip;
 import org.opentripplanner.ext.flex.trip.UnscheduledTrip;
+import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.model.TripStopTimes;
 import org.opentripplanner.model.impl.OtpTransitServiceBuilder;
@@ -13,13 +14,16 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.opentripplanner.model.StopPattern.PICKDROP_NONE;
+import static org.opentripplanner.model.PickDrop.NONE;
 
 public class FlexTripsMapper {
 
   private static final Logger LOG = LoggerFactory.getLogger(FlexTripsMapper.class);
 
-  static public List<FlexTrip> createFlexTrips(OtpTransitServiceBuilder builder) {
+  static public List<FlexTrip> createFlexTrips(
+          OtpTransitServiceBuilder builder,
+          DataImportIssueStore store
+  ) {
     List<FlexTrip> result = new ArrayList<>();
     TripStopTimes stopTimesByTrip = builder.getStopTimesSortedByTrip();
 
@@ -38,7 +42,12 @@ public class FlexTripsMapper {
         result.add(new UnscheduledTrip(trip, stopTimes));
       } else if (ScheduledDeviatedTrip.isScheduledFlexTrip(stopTimes)) {
         result.add(new ScheduledDeviatedTrip(trip, stopTimes));
-      } else if (hasContinuousStops(stopTimes)) {
+      } else if (hasContinuousStops(stopTimes) && FlexTrip.containsFlexStops(stopTimes)) {
+        store.add(
+            "ContinuousFlexTrip",
+            "Trip %s contains both flex stops and continuous pick up/drop off. This is an invalid combination: https://github.com/MobilityData/gtfs-flex/issues/70",
+             trip.getId()
+        );
         // result.add(new ContinuousPickupDropOffTrip(trip, stopTimes));
       }
 
@@ -54,7 +63,7 @@ public class FlexTripsMapper {
   private static boolean hasContinuousStops(List<StopTime> stopTimes) {
     return stopTimes
         .stream()
-        .anyMatch(st -> st.getFlexContinuousPickup() != PICKDROP_NONE || st.getFlexContinuousDropOff() != PICKDROP_NONE);
+        .anyMatch(st -> st.getFlexContinuousPickup() != NONE.getGtfsCode() || st.getFlexContinuousDropOff() != NONE.getGtfsCode());
   }
 
 }

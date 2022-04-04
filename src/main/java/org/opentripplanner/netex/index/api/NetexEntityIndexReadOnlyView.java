@@ -1,7 +1,9 @@
 package org.opentripplanner.netex.index.api;
 
 import java.util.Collection;
+
 import org.rutebanken.netex.model.Authority;
+import org.rutebanken.netex.model.Branding;
 import org.rutebanken.netex.model.DatedServiceJourney;
 import org.rutebanken.netex.model.DayType;
 import org.rutebanken.netex.model.DayTypeAssignment;
@@ -51,6 +53,7 @@ public interface NetexEntityIndexReadOnlyView {
     ReadOnlyHierarchicalMapById<ServiceJourneyInterchange> getServiceJourneyInterchangeById();
     ReadOnlyHierarchicalMapById<ServiceLink> getServiceLinkById();
     ReadOnlyHierarchicalVersionMapById<StopPlace> getStopPlaceById();
-    ReadOnlyHierarchicalMapById<TariffZone> getTariffZonesById();
+    ReadOnlyHierarchicalVersionMapById<TariffZone> getTariffZonesById();
+    ReadOnlyHierarchicalMapById<Branding> getBrandingById();
     String getTimeZone();
 }
