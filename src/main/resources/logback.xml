@@ -34,7 +34,7 @@
 
   <logger name="org.opentripplanner.routing" level="info"/>
   <logger name="org.opentripplanner.routing.algorithm.transferoptimization" level="info"/>
-  
+
   <logger name="org.opentripplanner.routing.algorithm.GenericAStar" level="info"/>
 
   <!-- Avoid printing debug messages when walk limits are exceeded -->
@@ -56,6 +56,8 @@
   <logger name="com.conveyal" level="info"/>
 
   <!-- Avoid printing info messages about calendars when building graph -->
+  <logger name="org.opentripplanner.updater.stoptime.TimetableSnapshotSource" level="error" />
+
   <logger name="org.onebusaway.gtfs.impl.calendar.CalendarServiceDataFactoryImpl" level="warn" />
   <!-- Avoid printing ugly warning message when unable to create websocket connection -->
   <logger name="com.ning.http.client.providers.netty.NettyAsyncHttpProvider" level="error" />
