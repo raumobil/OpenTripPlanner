@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
 import org.opentripplanner.datastore.api.OtpDataStoreConfig;
+import org.opentripplanner.datastore.base.SourceParameter;
 import org.opentripplanner.ext.dataoverlay.configuration.DataOverlayConfig;
 import org.opentripplanner.ext.fares.FaresConfiguration;
 import org.opentripplanner.framework.geometry.CompactElevationProfile;
@@ -132,11 +133,11 @@ public class BuildConfig implements OtpDataStoreConfig {
 
   private final String gsCredentials;
 
-  private final URI streetGraph;
+  private final SourceParameter streetGraph;
 
-  private final URI graph;
+  private final SourceParameter graph;
 
-  private final URI buildReportDir;
+  private final SourceParameter buildReportDir;
 
   /**
    * A custom OSM namer to use.
@@ -653,7 +654,7 @@ Netex data is also often supplied in a ZIP file.
   }
 
   @Override
-  public URI reportDirectory() {
+  public SourceParameter reportDirectory() {
     return buildReportDir;
   }
 
@@ -663,34 +664,35 @@ Netex data is also often supplied in a ZIP file.
   }
 
   @Override
-  public List<URI> osmFiles() {
+  public List<SourceParameter> osmFiles() {
     return osm.osmFiles();
   }
 
   @Override
-  public List<URI> demFiles() {
+  public List<SourceParameter> demFiles() {
     return dem.demFiles();
   }
 
   @Nonnull
   @Override
-  public List<URI> gtfsFiles() {
+  public List<SourceParameter> gtfsDownloadResources() {
+
     return transitFeeds.gtfsFiles();
   }
 
   @Nonnull
   @Override
-  public List<URI> netexFiles() {
+  public List<SourceParameter> netexFiles() {
     return transitFeeds.netexFiles();
   }
 
   @Override
-  public URI graph() {
+  public SourceParameter graph() {
     return graph;
   }
 
   @Override
-  public URI streetGraph() {
+  public SourceParameter streetGraph() {
     return streetGraph;
   }
 

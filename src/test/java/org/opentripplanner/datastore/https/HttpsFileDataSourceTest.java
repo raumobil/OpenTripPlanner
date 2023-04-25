@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 import org.apache.http.HttpHeaders;
@@ -29,6 +30,7 @@ class HttpsFileDataSourceTest {
   void testNotWritable() throws URISyntaxException {
     HttpsFileDataSource httpsFileDataSource = new HttpsFileDataSource(
       new URI(TEST_URI),
+      Collections.emptyMap(),
       FileType.UNKNOWN,
       new HttpsDataSourceMetadata(Map.of())
     );
@@ -39,6 +41,7 @@ class HttpsFileDataSourceTest {
   void testExist() throws URISyntaxException {
     HttpsFileDataSource httpsFileDataSource = new HttpsFileDataSource(
       new URI(TEST_URI),
+      Collections.emptyMap(),
       FileType.UNKNOWN,
       new HttpsDataSourceMetadata(Map.of())
     );
@@ -60,6 +63,7 @@ class HttpsFileDataSourceTest {
     HttpsDataSourceMetadata metadata = new HttpsDataSourceMetadata(headers);
     HttpsFileDataSource httpsFileDataSource = new HttpsFileDataSource(
       uri,
+      Collections.emptyMap(),
       FileType.UNKNOWN,
       metadata
     );
@@ -80,6 +84,7 @@ class HttpsFileDataSourceTest {
     HttpsDataSourceMetadata metadata = new HttpsDataSourceMetadata(Map.of());
     HttpsFileDataSource httpsFileDataSource = new HttpsFileDataSource(
       uri,
+      Collections.emptyMap(),
       FileType.UNKNOWN,
       metadata
     );

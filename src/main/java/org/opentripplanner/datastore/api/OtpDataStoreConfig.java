@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
 import org.opentripplanner.datastore.OtpDataStore;
+import org.opentripplanner.datastore.base.SourceParameter;
 
 /**
  * The {@link OtpDataStore} config, needed to create a store. This should be provided by the OTP
@@ -15,7 +16,7 @@ public interface OtpDataStoreConfig {
    * Save the build issue report to this location (URI). If {@code null} the {@code baseDirectory}
    * + {@code /report} is used.
    */
-  URI reportDirectory();
+  SourceParameter reportDirectory();
 
   /**
    * Local file system path to Google Cloud Platform service accounts credentials file. The
@@ -33,14 +34,14 @@ public interface OtpDataStoreConfig {
    * <p>
    * This parameter is optional. If {@code null} OSM files are loaded from {@code baseDirectory}.
    */
-  List<URI> osmFiles();
+  List<SourceParameter> osmFiles();
 
   /**
    * Array of URIs to elevation data files.
    * <p>
    * This parameter is optional. If {@code null} DEM files are loaded from {@code baseDirectory}.
    */
-  List<URI> demFiles();
+  List<SourceParameter> demFiles();
 
   /**
    * Array of URIs to GTFS data files .
@@ -48,7 +49,7 @@ public interface OtpDataStoreConfig {
    * This parameter is optional. If {@code null} GTFS files are loaded from {@code baseDirectory}.
    */
   @Nonnull
-  List<URI> gtfsFiles();
+  List<SourceParameter> gtfsDownloadResources();
 
   /**
    * Array of URIs to Netex data files.
@@ -56,17 +57,17 @@ public interface OtpDataStoreConfig {
    * This parameter is optional. If {@code null} Netex files are loaded from {@code baseDirectory}.
    */
   @Nonnull
-  List<URI> netexFiles();
+  List<SourceParameter> netexFiles();
 
   /**
    * The URI to the graph object file to load and/or save.
    */
-  URI graph();
+  SourceParameter graph();
 
   /**
    * The URI to the street graph object file to load and/or save.
    */
-  URI streetGraph();
+  SourceParameter streetGraph();
 
   /**
    *

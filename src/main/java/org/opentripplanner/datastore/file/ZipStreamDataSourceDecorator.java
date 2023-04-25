@@ -17,6 +17,7 @@ import org.opentripplanner.datastore.api.CompositeDataSource;
 import org.opentripplanner.datastore.api.DataSource;
 import org.opentripplanner.datastore.api.FileType;
 import org.opentripplanner.datastore.base.ByteArrayDataSource;
+import org.opentripplanner.datastore.base.SourceParameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,14 +76,19 @@ public class ZipStreamDataSourceDecorator implements CompositeDataSource {
   }
 
   @Override
-  public URI uri() {
-    return URI.create(path());
+  public SourceParameter sourceParameter() {
+    return null;
   }
 
-  @Override
-  public FileType type() {
-    return delegate.type();
-  }
+//  @Override
+//  public URI uri() {
+//    return URI.create(path());
+//  }
+//
+//  @Override
+//  public FileType type() {
+//    return delegate.sourceParameter().type();
+//  }
 
   @Override
   public long size() {
@@ -107,14 +113,14 @@ public class ZipStreamDataSourceDecorator implements CompositeDataSource {
   @Override
   public InputStream asInputStream() {
     throw new UnsupportedOperationException(
-      "This datasource type " + type() + " do not support READING. Can not read from: " + path()
+      "This datasource type " + sourceParameter().type() + " do not support READING. Can not read from: " + path()
     );
   }
 
   @Override
   public OutputStream asOutputStream() {
     throw new UnsupportedOperationException(
-      "This datasource type " + type() + " do not support WRITING. Can not write to: " + path()
+      "This datasource type " + sourceParameter().type() + " do not support WRITING. Can not write to: " + path()
     );
   }
 
@@ -193,7 +199,7 @@ public class ZipStreamDataSourceDecorator implements CompositeDataSource {
         new ByteArrayDataSource(
           entry.getName() + " (" + path() + ")",
           entry.getName(),
-          type(),
+          sourceParameter().type(),
           byteArray.length,
           entry.getLastModifiedTime().toMillis(),
           false
@@ -211,7 +217,7 @@ public class ZipStreamDataSourceDecorator implements CompositeDataSource {
         outputStream.write(byteArray);
         zis.transferTo(outputStream);
       }
-      content.add(new TemporaryFileDataSource(entry.getName(), tmpFile, type()));
+      content.add(new TemporaryFileDataSource(entry.getName(), tmpFile, sourceParameter().type()));
     }
   }
 

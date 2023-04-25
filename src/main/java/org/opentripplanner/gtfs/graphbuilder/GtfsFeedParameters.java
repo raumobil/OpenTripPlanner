@@ -1,9 +1,11 @@
 package org.opentripplanner.gtfs.graphbuilder;
 
 import java.net.URI;
+import java.util.List;
 import javax.annotation.Nullable;
 import org.opentripplanner.graph_builder.model.DataSourceConfig;
 import org.opentripplanner.transit.model.site.StopTransferPriority;
+import org.opentripplanner.updater.spi.HttpHeaders;
 
 /**
  * Configure a GTFS feed.
@@ -11,6 +13,7 @@ import org.opentripplanner.transit.model.site.StopTransferPriority;
  */
 public record GtfsFeedParameters(
   URI source,
+  HttpHeaders headers,
   String feedId,
   boolean removeRepeatedStops,
   StopTransferPriority stationTransferPreference,
@@ -35,6 +38,7 @@ public record GtfsFeedParameters(
   GtfsFeedParameters(GtfsFeedParametersBuilder builder) {
     this(
       builder.source(),
+      builder.headers(),
       builder.feedId(),
       builder.removeRepeatedStops(),
       builder.stationTransferPreference(),

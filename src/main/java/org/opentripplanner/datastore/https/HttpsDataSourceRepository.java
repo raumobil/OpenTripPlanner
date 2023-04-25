@@ -10,6 +10,7 @@ import org.opentripplanner.datastore.api.CompositeDataSource;
 import org.opentripplanner.datastore.api.DataSource;
 import org.opentripplanner.datastore.api.FileType;
 import org.opentripplanner.datastore.base.DataSourceRepository;
+import org.opentripplanner.datastore.base.SourceParameter;
 import org.opentripplanner.datastore.file.ZipStreamDataSourceDecorator;
 import org.opentripplanner.framework.io.HttpUtils;
 
@@ -29,19 +30,19 @@ public class HttpsDataSourceRepository implements DataSourceRepository {
   public void open() {}
 
   @Override
-  public DataSource findSource(@Nonnull URI uri, @Nonnull FileType type) {
-    if (skipUri(uri)) {
+  public DataSource findSource(@Nonnull SourceParameter sourceParameter) {
+    if (sourceParameter.uri() != null && skipUri(sourceParameter.uri())) {
       return null;
     }
-    return createSource(uri, type);
+    return createSource(sourceParameter);
   }
 
   @Override
-  public CompositeDataSource findCompositeSource(@Nonnull URI uri, @Nonnull FileType type) {
-    if (skipUri(uri)) {
+  public CompositeDataSource findCompositeSource(@Nonnull SourceParameter sourceParameter) {
+    if (skipUri(sourceParameter.uri())) {
       return null;
     }
-    return createCompositeSource(uri, type);
+    return createCompositeSource(sourceParameter);
   }
 
   /* private methods */
@@ -50,20 +51,20 @@ public class HttpsDataSourceRepository implements DataSourceRepository {
     return !"https".equals(uri.getScheme());
   }
 
-  private DataSource createSource(URI uri, FileType type) {
+  private DataSource createSource(SourceParameter sourceParameter) {
     HttpsDataSourceMetadata httpsDataSourceMetadata = new HttpsDataSourceMetadata(
-      getHttpHeaders(uri)
+      getHttpHeaders(sourceParameter.uri())
     );
-    return new HttpsFileDataSource(uri, type, httpsDataSourceMetadata);
+    return new HttpsFileDataSource(sourceParameter, httpsDataSourceMetadata);
   }
 
-  private CompositeDataSource createCompositeSource(URI uri, FileType type) {
+  private CompositeDataSource createCompositeSource(SourceParameter sourceParameter) {
     HttpsDataSourceMetadata httpsDataSourceMetadata = new HttpsDataSourceMetadata(
-      getHttpHeaders(uri)
+      getHttpHeaders(sourceParameter.uri())
     );
 
-    if (httpsDataSourceMetadata.isZipContentType() || uri.getPath().endsWith(".zip")) {
-      DataSource httpsSource = new HttpsFileDataSource(uri, type, httpsDataSourceMetadata);
+    if (httpsDataSourceMetadata.isZipContentType() || sourceParameter.uri().getPath().endsWith(".zip")) {
+      DataSource httpsSource = new HttpsFileDataSource(sourceParameter, httpsDataSourceMetadata);
       return new ZipStreamDataSourceDecorator(httpsSource);
     } else {
       throw new UnsupportedOperationException(

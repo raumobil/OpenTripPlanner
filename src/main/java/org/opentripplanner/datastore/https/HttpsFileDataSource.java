@@ -3,12 +3,10 @@ package org.opentripplanner.datastore.https;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URI;
 import java.time.Duration;
-import java.util.Map;
 import java.util.zip.GZIPInputStream;
 import org.opentripplanner.datastore.api.DataSource;
-import org.opentripplanner.datastore.api.FileType;
+import org.opentripplanner.datastore.base.SourceParameter;
 import org.opentripplanner.datastore.file.DirectoryDataSource;
 import org.opentripplanner.datastore.file.ZipFileDataSource;
 import org.opentripplanner.framework.io.HttpUtils;
@@ -19,7 +17,7 @@ import org.opentripplanner.framework.io.HttpUtils;
  * Reading compressed HTTPS resources is supported. The only format supported is gzip (extension
  * .gz).
  */
-record HttpsFileDataSource(URI uri, FileType type, HttpsDataSourceMetadata httpsDataSourceMetadata)
+record  HttpsFileDataSource(SourceParameter sourceParameter, HttpsDataSourceMetadata httpsDataSourceMetadata)
   implements DataSource {
   private static final Duration HTTP_GET_REQUEST_TIMEOUT = Duration.ofSeconds(20);
 
@@ -55,14 +53,14 @@ record HttpsFileDataSource(URI uri, FileType type, HttpsDataSourceMetadata https
     InputStream in;
 
     try {
-      in = HttpUtils.getData(uri, HTTP_GET_REQUEST_TIMEOUT, Map.of());
+      in = HttpUtils.getData(sourceParameter.uri(), HTTP_GET_REQUEST_TIMEOUT, sourceParameter.headers());
     } catch (IOException e) {
       throw new IllegalStateException(e.getLocalizedMessage(), e);
     }
 
     // We support both gzip and unzipped files when reading.
 
-    if (httpsDataSourceMetadata().isGzipContentType() || uri.getPath().endsWith(".gz")) {
+    if (httpsDataSourceMetadata().isGzipContentType() || sourceParameter.uri().getPath().endsWith(".gz")) {
       try {
         return new GZIPInputStream(in);
       } catch (IOException e) {
@@ -82,12 +80,12 @@ record HttpsFileDataSource(URI uri, FileType type, HttpsDataSourceMetadata https
 
   @Override
   public String name() {
-    return uri.getPath().substring(uri.getPath().lastIndexOf('/') + 1);
+    return sourceParameter.uri().getPath().substring(sourceParameter.uri().getPath().lastIndexOf('/') + 1);
   }
 
   @Override
   public String path() {
-    return uri.toString();
+    return sourceParameter.uri().toString();
   }
 
   @Override

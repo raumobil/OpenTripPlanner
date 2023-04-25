@@ -21,6 +21,7 @@ import org.opentripplanner.datastore.api.CompositeDataSource;
 import org.opentripplanner.datastore.api.DataSource;
 import org.opentripplanner.datastore.api.FileType;
 import org.opentripplanner.datastore.base.LocalDataSourceRepository;
+import org.opentripplanner.datastore.base.SourceParameter;
 import org.opentripplanner.framework.application.OtpAppException;
 import org.opentripplanner.framework.application.OtpFileNames;
 import org.slf4j.Logger;
@@ -73,13 +74,13 @@ public class FileDataSourceRepository implements LocalDataSourceRepository {
   }
 
   @Override
-  public DataSource findSource(@Nonnull URI uri, @Nonnull FileType type) {
-    return new FileDataSource(openFile(uri, type), type);
+  public DataSource findSource(@Nonnull SourceParameter sourceParameter) {
+    return new FileDataSource(openFile(sourceParameter.uri(), sourceParameter.type()), sourceParameter.type());
   }
 
   @Override
-  public CompositeDataSource findCompositeSource(@Nonnull URI uri, @Nonnull FileType type) {
-    return createCompositeSource(openFile(uri, type), type);
+  public CompositeDataSource findCompositeSource(@Nonnull SourceParameter sourceParameter) {
+    return createCompositeSource(openFile(sourceParameter.uri(), sourceParameter.type()), sourceParameter.type());
   }
 
   @Override

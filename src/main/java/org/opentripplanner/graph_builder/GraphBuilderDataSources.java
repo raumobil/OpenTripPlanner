@@ -117,11 +117,11 @@ public class GraphBuilderDataSources {
   private OsmExtractParameters getOsmExtractConfig(DataSource dataSource) {
     return buildConfig.osm.parameters
       .stream()
-      .filter(osmExtractConfig -> uriMatch(osmExtractConfig.source(), dataSource.uri()))
+      .filter(osmExtractConfig -> uriMatch(osmExtractConfig.source(), dataSource.sourceParameter().uri()))
       .findFirst()
       .orElse(
         new OsmExtractParametersBuilder(buildConfig.osmDefaults)
-          .withSource(dataSource.uri())
+          .withSource(dataSource.sourceParameter().uri())
           .build()
       );
   }
@@ -138,11 +138,11 @@ public class GraphBuilderDataSources {
     return buildConfig.dem
       .demExtracts()
       .stream()
-      .filter(demExtractConfig -> uriMatch(demExtractConfig.source(), dataSource.uri()))
+      .filter(demExtractConfig -> uriMatch(demExtractConfig.source(), dataSource.sourceParameter().uri()))
       .findFirst()
       .orElse(
         new DemExtractParametersBuilder(buildConfig.demDefaults)
-          .withSource(dataSource.uri())
+          .withSource(dataSource.sourceParameter().uri())
           .build()
       );
   }
@@ -159,9 +159,9 @@ public class GraphBuilderDataSources {
     return buildConfig.transitFeeds
       .gtfsFeeds()
       .stream()
-      .filter(gtfsFeedConfig -> uriMatch(gtfsFeedConfig.source(), dataSource.uri()))
+      .filter(gtfsFeedConfig -> uriMatch(gtfsFeedConfig.source(), dataSource.sourceParameter().uri()))
       .findFirst()
-      .orElse(buildConfig.gtfsDefaults.copyOf().withSource(dataSource.uri()).build());
+      .orElse(buildConfig.gtfsDefaults.copyOf().withSource(dataSource.sourceParameter().uri()).build());
   }
 
   public Iterable<ConfiguredDataSource<NetexFeedParameters>> getNetexConfiguredDatasource() {
@@ -176,9 +176,9 @@ public class GraphBuilderDataSources {
     return buildConfig.transitFeeds
       .netexFeeds()
       .stream()
-      .filter(netexFeedConfig -> uriMatch(netexFeedConfig.source(), dataSource.uri()))
+      .filter(netexFeedConfig -> uriMatch(netexFeedConfig.source(), dataSource.sourceParameter().uri()))
       .findFirst()
-      .orElse(buildConfig.netexDefaults.copyOf().withSource(dataSource.uri()).build());
+      .orElse(buildConfig.netexDefaults.copyOf().withSource(dataSource.sourceParameter().uri()).build());
   }
 
   /**

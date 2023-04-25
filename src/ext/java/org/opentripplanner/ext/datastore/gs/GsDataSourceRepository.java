@@ -14,6 +14,7 @@ import org.opentripplanner.datastore.api.CompositeDataSource;
 import org.opentripplanner.datastore.api.DataSource;
 import org.opentripplanner.datastore.api.FileType;
 import org.opentripplanner.datastore.base.DataSourceRepository;
+import org.opentripplanner.datastore.base.SourceParameter;
 import org.opentripplanner.datastore.file.ZipStreamDataSourceDecorator;
 
 /**
@@ -39,20 +40,20 @@ public class GsDataSourceRepository implements DataSourceRepository {
   }
 
   @Override
-  public DataSource findSource(@Nonnull URI uri, @Nonnull FileType type) {
-    if (skipUri(uri)) {
+  public DataSource findSource(@Nonnull SourceParameter sourceParameter) {
+    if (skipUri(sourceParameter.uri())) {
       return null;
     }
-    BlobId blobId = GsHelper.toBlobId(uri);
-    return createSource(blobId, type);
+    BlobId blobId = GsHelper.toBlobId(sourceParameter.uri());
+    return createSource(blobId, sourceParameter.type());
   }
 
   @Override
-  public CompositeDataSource findCompositeSource(@Nonnull URI uri, @Nonnull FileType type) {
-    if (skipUri(uri)) {
+  public CompositeDataSource findCompositeSource(@Nonnull SourceParameter sourceParameter) {
+    if (skipUri(sourceParameter.uri())) {
       return null;
     }
-    return createCompositeSource(GsHelper.toBlobId(uri), type);
+    return createCompositeSource(GsHelper.toBlobId(sourceParameter.uri()), sourceParameter.type());
   }
 
   /* private methods */

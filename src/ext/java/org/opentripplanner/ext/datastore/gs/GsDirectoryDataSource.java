@@ -42,7 +42,7 @@ public class GsDirectoryDataSource extends AbstractGsDataSource implements Compo
   @Override
   public Collection<DataSource> content() {
     Collection<DataSource> content = new ArrayList<>();
-    forEachChildBlob(blob -> content.add(new GsFileDataSource(blob, type())));
+    forEachChildBlob(blob -> content.add(new GsFileDataSource(blob, sourceParameter().type())));
     return content;
   }
 
@@ -51,11 +51,11 @@ public class GsDirectoryDataSource extends AbstractGsDataSource implements Compo
     Blob blob = childBlob(name);
     // If file exist
     if (blob != null) {
-      return new GsFileDataSource(blob, type());
+      return new GsFileDataSource(blob, sourceParameter().type());
     }
     // New file
     BlobId childBlobId = BlobId.of(bucketName(), childPath(name));
-    return new GsOutFileDataSource(storage, childBlobId, type());
+    return new GsOutFileDataSource(storage, childBlobId, sourceParameter().type());
   }
 
   @Override

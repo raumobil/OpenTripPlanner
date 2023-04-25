@@ -2,6 +2,7 @@ package org.opentripplanner.gtfs.graphbuilder;
 
 import java.net.URI;
 import org.opentripplanner.transit.model.site.StopTransferPriority;
+import org.opentripplanner.updater.spi.HttpHeaders;
 
 /**
  * Configure a GTFS feed.
@@ -9,6 +10,7 @@ import org.opentripplanner.transit.model.site.StopTransferPriority;
 public class GtfsFeedParametersBuilder {
 
   private URI source;
+  private HttpHeaders headers;
   private String feedId;
   private boolean removeRepeatedStops;
   private StopTransferPriority stationTransferPreference;
@@ -59,6 +61,15 @@ public class GtfsFeedParametersBuilder {
 
   URI source() {
     return source;
+  }
+
+  public GtfsFeedParametersBuilder withHeaders(HttpHeaders headers) {
+    this.headers = headers;
+    return this;
+  }
+
+  HttpHeaders headers() {
+    return headers;
   }
 
   public GtfsFeedParametersBuilder withRemoveRepeatedStops(boolean value) {

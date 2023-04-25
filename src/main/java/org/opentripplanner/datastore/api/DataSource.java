@@ -5,7 +5,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import org.opentripplanner.datastore.OtpDataStore;
+import org.opentripplanner.datastore.base.SourceParameter;
 import org.opentripplanner.framework.text.FileSizeToTextConverter;
 
 /**
@@ -48,15 +52,17 @@ public interface DataSource {
    */
   String path();
 
-  /**
-   * @return the URI of the datasource. The URI can be used to identify uniquely the data source.
-   */
-  URI uri();
 
-  /**
-   * The file type this data source is identified as.
-   */
-  FileType type();
+  SourceParameter sourceParameter();
+//  /**
+//   * @return the URI of the datasource. The URI can be used to identify uniquely the data source.
+//   */
+//  URI uri();
+//
+//  /**
+//   * The file type this data source is identified as.
+//   */
+//  FileType type();
 
   /**
    * @return size in bytes, if unknown returns {@code -1}
@@ -134,7 +140,7 @@ public interface DataSource {
    * {@code [icon] [filename]  [path]  [date time]  [file size]}
    */
   default String detailedInfo() {
-    String info = String.format("%s %s  %s", type().icon(), name(), directory());
+    String info = String.format("%s %s  %s", sourceParameter().type().icon(), name(), directory());
     if (lastModified() > 0) {
       SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
       info += "  " + sdf.format(lastModified());
@@ -151,5 +157,9 @@ public interface DataSource {
   default String directory() {
     int endIndex = path().length() - (name().length() + 1);
     return endIndex <= 0 ? "" : path().substring(0, endIndex);
+  }
+
+  default Map<String, String> headers() {
+    return Collections.emptyMap();
   }
 }

@@ -18,16 +18,20 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import org.apache.commons.collections4.CollectionUtils;
 import org.opentripplanner.datastore.api.CompositeDataSource;
 import org.opentripplanner.datastore.api.DataSource;
+import org.opentripplanner.datastore.api.DownloadResource;
 import org.opentripplanner.datastore.api.FileType;
 import org.opentripplanner.datastore.api.OtpDataStoreConfig;
 import org.opentripplanner.datastore.base.DataSourceRepository;
 import org.opentripplanner.datastore.base.LocalDataSourceRepository;
+import org.opentripplanner.datastore.base.SourceParameter;
 import org.opentripplanner.datastore.configure.DataStoreModule;
 import org.opentripplanner.routing.graph.SerializedGraphObject;
 
@@ -97,7 +101,8 @@ public class OtpDataStore {
     addAll(localRepository.listExistingSources(CONFIG));
     addAll(findMultipleSources(config.osmFiles(), OSM));
     addAll(findMultipleSources(config.demFiles(), DEM));
-    addAll(findMultipleCompositeSources(config.gtfsFiles(), GTFS));
+    List<SourceParameter> gtfsDownloadResources = config.gtfsDownloadResources();
+    addAll(findMultipleCompositeSources(gtfsDownloadResources, GTFS));
     addAll(findMultipleCompositeSources(config.netexFiles(), NETEX));
 
     streetGraph = findSingleSource(config.streetGraph(), STREET_GRAPH_FILENAME, GRAPH);
@@ -155,7 +160,7 @@ public class OtpDataStore {
   /* private methods */
   private void add(DataSource source) {
     if (source != null) {
-      sources.put(source.type(), source);
+      sources.put(source.sourceParameter().type(), source);
     }
   }
 
@@ -178,48 +183,48 @@ public class OtpDataStore {
   }
 
   private DataSource findSingleSource(
-    @Nullable URI uri,
+    @Nullable SourceParameter sourceParameter,
     @Nonnull String filename,
     @Nonnull FileType type
   ) {
-    if (uri != null) {
-      return findSourceUsingAllRepos(it -> it.findSource(uri, type));
+    if (sourceParameter != null) {
+      return findSourceUsingAllRepos(it -> it.findSource(sourceParameter));
     }
     return localRepository.findSource(filename, type);
   }
 
   private CompositeDataSource findCompositeSource(
-    @Nullable URI uri,
+    @Nonnull SourceParameter sourceParameter,
     @Nonnull String filename,
-    @Nonnull FileType type
-  ) {
-    if (uri != null) {
-      return findSourceUsingAllRepos(it -> it.findCompositeSource(uri, type));
+    @Nonnull FileType type)
+  {
+    if (sourceParameter != null) {
+      return findSourceUsingAllRepos(it -> it.findCompositeSource(sourceParameter));
     } else {
       return localRepository.findCompositeSource(filename, type);
     }
   }
 
   private List<DataSource> findMultipleSources(
-    @Nonnull Collection<URI> uris,
+    @Nonnull Collection<SourceParameter> sourceParameters,
     @Nonnull FileType type
   ) {
-    if (uris == null || uris.isEmpty()) {
+    if (CollectionUtils.isEmpty(sourceParameters)) {
       return localRepository.listExistingSources(type);
     }
     List<DataSource> result = new ArrayList<>();
-    for (URI uri : uris) {
-      DataSource res = findSourceUsingAllRepos(it -> it.findSource(uri, type));
+    for (SourceParameter sourceParameter : sourceParameters) {
+      DataSource res = findSourceUsingAllRepos(it -> it.findSource(sourceParameter));
       result.add(res);
     }
     return result;
   }
 
   private List<CompositeDataSource> findMultipleCompositeSources(
-    @Nonnull Collection<URI> uris,
+    @Nonnull Collection<SourceParameter> sourceParameters,
     @Nonnull FileType type
   ) {
-    if (uris.isEmpty()) {
+    if (sourceParameters.isEmpty()) {
       return localRepository
         .listExistingSources(type)
         .stream()
@@ -227,8 +232,8 @@ public class OtpDataStore {
         .collect(Collectors.toList());
     }
     List<CompositeDataSource> result = new ArrayList<>();
-    for (URI uri : uris) {
-      CompositeDataSource res = findSourceUsingAllRepos(it -> it.findCompositeSource(uri, type));
+    for (SourceParameter parameter : sourceParameters) {
+      CompositeDataSource res = findSourceUsingAllRepos(it -> it.findCompositeSource(parameter));
       result.add(res);
     }
     return result;

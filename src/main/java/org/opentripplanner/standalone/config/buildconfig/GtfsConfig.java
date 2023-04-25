@@ -1,11 +1,13 @@
 package org.opentripplanner.standalone.config.buildconfig;
 
+import static org.opentripplanner.standalone.config.framework.json.OtpVersion.NA;
 import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2_2;
 import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2_3;
 
 import org.opentripplanner.gtfs.graphbuilder.GtfsFeedParameters;
 import org.opentripplanner.gtfs.graphbuilder.GtfsFeedParametersBuilder;
 import org.opentripplanner.standalone.config.framework.json.NodeAdapter;
+import org.opentripplanner.standalone.config.routerconfig.updaters.HttpHeadersConfig;
 
 /**
  * This class map GTFS build configuration from JSON to Java objects.
@@ -40,6 +42,9 @@ public class GtfsConfig {
       )
       .withSource(
         node.of("source").since(V2_2).summary("The unique URI pointing to the data file.").asUri()
+      )
+      .withHeaders(
+        HttpHeadersConfig.headers(node, V2_3)
       )
       .build();
   }
