@@ -8,12 +8,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.mobilitydata.gbfs.v3_1_RC2.geofencing_zones.GBFSGeofencingZones;
 import org.mobilitydata.gbfs.v3_1_RC2.station_information.GBFSStationInformation;
 import org.mobilitydata.gbfs.v3_1_RC2.station_status.GBFSStation;
 import org.mobilitydata.gbfs.v3_1_RC2.station_status.GBFSStationStatus;
 import org.mobilitydata.gbfs.v3_1_RC2.system_information.GBFSSystemInformation;
+import org.mobilitydata.gbfs.v3_1_RC2.vehicle_availability.GBFSVehicle;
+import org.mobilitydata.gbfs.v3_1_RC2.vehicle_availability.GBFSVehicleAvailability;
 import org.mobilitydata.gbfs.v3_1_RC2.vehicle_status.GBFSVehicleStatus;
 import org.mobilitydata.gbfs.v3_1_RC2.vehicle_types.GBFSVehicleType;
 import org.mobilitydata.gbfs.v3_1_RC2.vehicle_types.GBFSVehicleTypes;
@@ -23,6 +26,7 @@ import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.service.vehiclerental.model.GeofencingZone;
 import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalPlace;
+import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalSystem;
 import org.opentripplanner.updater.vehicle_rental.datasources.params.GbfsVehicleRentalDataSourceParameters;
 import org.opentripplanner.updater.vehicle_rental.datasources.params.RentalPickupType;
@@ -62,6 +66,7 @@ public class GbfsFeedMapper
       // Both station information and status are required for all systems using stations
       var stationInformation = loader.getFeed(GBFSStationInformation.class);
       var stationStatus = loader.getFeed(GBFSStationStatus.class);
+      var vehicleAvailability = loader.getFeed(GBFSVehicleAvailability.class);
       if (stationInformation != null && stationStatus != null) {
         // Index all the station status entries on their station ID.
         // in case of duplicates entries (stations with identical unique id),
@@ -89,16 +94,23 @@ public class GbfsFeedMapper
         );
 
         // Iterate over all known stations, and if we have any status information add it to those station objects.
-        stations.addAll(
-          stationInformation
-            .getData()
-            .getStations()
-            .stream()
-            .map(stationInformationMapper::mapStationInformation)
-            .filter(Objects::nonNull)
-            .map(stationStatusMapper::mapStationStatus)
-            .toList()
-        );
+        Stream<VehicleRentalStation> stationStream = stationInformation
+          .getData()
+          .getStations()
+          .stream()
+          .map(stationInformationMapper::mapStationInformation)
+          .filter(Objects::nonNull)
+          .map(stationStatusMapper::mapStationStatus);
+
+        // add vehicle availability information, if offered.
+        if (vehicleAvailability != null) {
+          GbfsVehicleAvailabilityMapper availabilityMapper = getGbfsVehicleAvailabilityMapper(
+            vehicleAvailability
+          );
+          stationStream = stationStream.map(availabilityMapper::mapStationAvailabilities);
+        }
+
+        stations.addAll(stationStream.toList());
       }
     }
 
@@ -138,6 +150,18 @@ public class GbfsFeedMapper
       }
     }
     return stations;
+  }
+
+  private static GbfsVehicleAvailabilityMapper getGbfsVehicleAvailabilityMapper(
+    GBFSVehicleAvailability vehicleAvailability
+  ) {
+    Map<String, List<GBFSVehicle>> gbfsVehiclesByStationId = vehicleAvailability
+      .getData()
+      .getVehicles()
+      .stream()
+      .collect(Collectors.groupingBy(GBFSVehicle::getStationId));
+
+    return new GbfsVehicleAvailabilityMapper(gbfsVehiclesByStationId);
   }
 
   @Override

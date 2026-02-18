@@ -35,6 +35,20 @@ public class GbfsFeedLoaderAndMapper {
     var gbfsFeedVersion = JsonUtils.asText(gbfsNode, "version").orElse(null);
 
     switch (gbfsFeedVersion) {
+      case "3.1-RC2" -> {
+        var loaderv31 =
+          new org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2.GbfsFeedLoader(
+            params.url(),
+            params.httpHeaders(),
+            client
+          );
+        loader = loaderv31;
+        mapper =
+          new org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2.GbfsFeedMapper(
+            loaderv31,
+            params
+          );
+      }
       case "3.0" -> {
         var loaderv30 =
           new org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3.GbfsFeedLoader(
