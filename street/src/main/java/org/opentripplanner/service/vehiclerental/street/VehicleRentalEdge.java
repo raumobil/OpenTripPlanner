@@ -97,6 +97,7 @@ public class VehicleRentalEdge extends Edge {
         case RENTING_FROM_STATION -> {
           if (
             (realtimeAvailability && !station.allowPickupNow()) ||
+            !isVehicleAvailableDuringRentalPeriod(s0, station) ||
             !station.availablePickupFormFactors(realtimeAvailability).contains(formFactor)
           ) {
             return State.empty();
@@ -128,14 +129,12 @@ public class VehicleRentalEdge extends Edge {
         case BEFORE_RENTING -> {
           if (
             (realtimeAvailability && !station.allowPickupNow()) ||
-            !station.availablePickupFormFactors(realtimeAvailability).contains(formFactor)
+              !isVehicleAvailableDuringRentalPeriod(s0, station) ||
+              !station.availablePickupFormFactors(realtimeAvailability).contains(formFactor)
           ) {
             return State.empty();
           }
           if (station.isFloatingVehicle()) {
-            if (!isVehicleAvailableDuringRentalPeriod(s0, station)) {
-              return State.empty();
-            }
             s1.beginFloatingVehicleRenting(formFactor, getPropulsionType(station), network, false);
           } else {
             boolean mayKeep =
@@ -178,15 +177,35 @@ public class VehicleRentalEdge extends Edge {
     return s1.makeStateArray();
   }
 
-  private static boolean isVehicleAvailableDuringRentalPeriod(State s0, VehicleRentalPlace place) {
-    if (s0.getRequest().rentalPeriod() != null && place.isCarStation()) {
-      var vehicleRentalVehicle = (VehicleRentalVehicle) place;
-      var availableUntil = vehicleRentalVehicle.availableUntil();
-      if (availableUntil == null) {
-        return true;
+  /**
+   * todo doc
+   */
+  public static boolean isVehicleAvailableDuringRentalPeriod(State s0, VehicleRentalPlace place) {
+    var rentalPeriod = s0.getRequest().rentalPeriod();
+    if (rentalPeriod != null && place.isCarStation()) {
+      if (place instanceof VehicleRentalVehicle) {
+        var vehicleRentalVehicle = (VehicleRentalVehicle) place;
+        var availableUntil = vehicleRentalVehicle.availableUntil();
+        if (availableUntil == null) {
+          return true;
+        }
+        Instant rentalEndTime = rentalPeriod.end();
+        return !availableUntil.isBefore(rentalEndTime);
+      } else if (place instanceof VehicleRentalStation) {
+        var rentalStation = (VehicleRentalStation) place;
+        var vehicleOnStations = rentalStation.vehiclesOnStation();
+        if (vehicleOnStations == null) {
+          return true;
+        }
+        return vehicleOnStations.stream().anyMatch(vehicle ->
+            vehicle.availabilities()
+            .stream()
+            .anyMatch(availability -> {
+              return (rentalPeriod.start().isAfter(availability.from()) || rentalPeriod.start().equals(availability.from())) &&
+                (availability.until() == null || (rentalPeriod.end().isBefore(availability.until()) || rentalPeriod.end().equals(availability.until())));
+            })
+        );
       }
-      Instant rentalEndTime = s0.getRequest().rentalPeriod().end();
-      return !availableUntil.isBefore(rentalEndTime);
     }
     return true;
   }
