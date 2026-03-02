@@ -2,6 +2,7 @@ package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3;
 
 import static java.util.Objects.requireNonNullElse;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.Nullable;
@@ -14,6 +15,7 @@ import org.opentripplanner.service.vehiclerental.model.RentalVehicleFuel;
 import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalSystem;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalVehicle;
+import org.opentripplanner.utils.lang.StringUtils;
 import org.opentripplanner.utils.logging.Throttle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +83,11 @@ class GbfsVehicleStatusMapper {
         .withIsReserved(vehicle.getIsReserved() != null ? vehicle.getIsReserved() : false)
         .withIsDisabled(vehicle.getIsDisabled() != null ? vehicle.getIsDisabled() : false)
         .withFuel(RentalVehicleFuel.of().withPercent(fuelRatio).withRange(rangeMeters).build());
+
+      String availableUntil = vehicle.getAvailableUntil();
+      if (StringUtils.hasValue(availableUntil)) {
+        builder.withAvailableUntil(Instant.parse(availableUntil));
+      }
 
       return builder.build();
     } else {
