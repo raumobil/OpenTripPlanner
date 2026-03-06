@@ -1,0 +1,33 @@
+{
+  "data": {
+    "feeds": [
+      {
+        "name": "system_information",
+        "url": "file:src/test/resources/gbfs/karlsruhe-v3_1/system_information.json"
+      },
+      {
+        "name": "vehicle_types",
+        "url": "file:src/test/resources/gbfs/karlsruhe-v3_1/vehicle_types.json"
+      },
+      {
+        "name": "station_information",
+        "url": "file:src/test/resources/gbfs/karlsruhe-v3_1/station_information.json"
+      },
+      {
+        "name": "station_status",
+        "url": "file:src/test/resources/gbfs/karlsruhe-v3_1/station_status.json"
+      },
+      {
+        "name": "geofencing_zones",
+        "url": "file:src/test/resources/gbfs/karlsruhe-v3_1/geofencing_zones.json"
+      },
+      {
+        "name": "vehicle_availability",
+        "url": "file:src/test/resources/gbfs/karlsruhe-v3_1/vehicle_availability.json"
+      }
+    ]
+  },
+  "last_updated": "2026-03-03T12:07:43.124370+00:00",
+  "ttl": 600,
+  "version": "3.1-RC2"
+}

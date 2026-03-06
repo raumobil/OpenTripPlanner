@@ -1,0 +1,36 @@
+{
+  "last_updated": "2026-03-03T10:58:44.934+00:00",
+  "ttl": 3600,
+  "version": "3.1-RC2",
+  "data": {
+    "system_id": "testfeed_3_1",
+    "languages": ["de"],
+    "name": [
+      {
+        "text": "Example CarSharing",
+        "language": "de"
+      }
+    ],
+    "url": "https://www.example-carsharing.de",
+    "purchase_url": "https://www.example-carsharing.de/tarife",
+    "phone_number": "+49 123 456 789 0",
+    "email": "info@example-carsharing.de",
+    "feed_contact_email": "gbfs@example-carsharing.de",
+    "timezone": "Europe/Berlin",
+    "license_id": "CC-BY-4.0",
+    "terms_url": [
+      {
+        "text": "https://www.example-carsharing.de/agb",
+        "language": "de"
+      }
+    ],
+    "terms_last_updated": "2026-03-02",
+    "privacy_url": [
+      {
+        "text": "https://www.example-carsharing.de/datenschutz",
+        "language": "de"
+      }
+    ],
+    "privacy_last_updated": "2026-03-02"
+  }
+}

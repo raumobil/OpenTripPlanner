@@ -1,0 +1,69 @@
+{
+  "last_updated": "2026-03-05T12:24:29.369+00:00",
+  "ttl": 3600,
+  "version": "3.1-RC2",
+  "data": {
+    "stations": [
+      {
+        "station_id": "STA001",
+        "name": [
+          {
+            "text": "Hauptbahnhof KA Süd",
+            "language": "de"
+          }
+        ],
+        "lat": 48.99196116549547,
+        "lon": 8.401841610598979,
+        "address": "Hinterm Bahnhof 1, 76135 Karlsruhe",
+        "capacity": 8,
+        "is_valet_station": false,
+        "is_charging_station": true
+      },
+      {
+        "station_id": "STA002",
+        "name": [
+          {
+            "text": "Schlossplatz",
+            "language": "de"
+          }
+        ],
+        "lat": 49.010738284314954,
+        "lon": 8.403963910207352,
+        "address": "Schlossplatz 16, 76136 Karlsruhe",
+        "capacity": 4,
+        "is_valet_station": false,
+        "is_charging_station": false
+      },
+      {
+        "station_id": "STA003",
+        "name": [
+          {
+            "text": "Rheinhafen",
+            "language": "de"
+          }
+        ],
+        "lat": 49.01589648165981,
+        "lon": 8.345936551685327,
+        "address": "Rheinhafenstrasse 1, 76136 Karlsruhe",
+        "capacity": 6,
+        "is_valet_station": false,
+        "is_charging_station": true
+      },
+      {
+        "station_id": "STA004",
+        "name": [
+          {
+            "text": "Rheinhafen 2",
+            "language": "de"
+          }
+        ],
+        "lat": 49.01376231273326,
+        "lon": 8.34604426796102,
+        "address": "Südliche Uferstraße, 76136 Karlsruhe",
+        "capacity": 6,
+        "is_valet_station": false,
+        "is_charging_station": true
+      }
+    ]
+  }
+}

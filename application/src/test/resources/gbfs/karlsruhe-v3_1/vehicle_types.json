@@ -1,0 +1,57 @@
+{
+  "last_updated": "2026-03-03T10:58:44.934+00:00",
+  "ttl": 3600,
+  "version": "3.1-RC2",
+  "data": {
+    "vehicle_types": [
+      {
+        "vehicle_type_id": "VT_COMPACT_COMBUSTION",
+        "form_factor": "car",
+        "rider_capacity": 5,
+        "propulsion_type": "combustion",
+        "max_range_meters": 500000,
+        "name": [
+          {
+            "text": "Kleinwagen (Benzin)",
+            "language": "de"
+          }
+        ],
+        "return_constraint": "roundtrip_station",
+        "default_pricing_plan_id": "PLAN_HOURLY_BASIC",
+        "pricing_plan_ids": ["PLAN_HOURLY_BASIC", "PLAN_DAILY_BASIC"]
+      },
+      {
+        "vehicle_type_id": "VT_MIDSIZE_ELECTRIC",
+        "form_factor": "car",
+        "rider_capacity": 5,
+        "propulsion_type": "electric",
+        "max_range_meters": 400000,
+        "name": [
+          {
+            "text": "Mittelklasse (Elektro)",
+            "language": "de"
+          }
+        ],
+        "return_constraint": "roundtrip_station",
+        "default_pricing_plan_id": "PLAN_HOURLY_ELECTRIC",
+        "pricing_plan_ids": ["PLAN_HOURLY_ELECTRIC", "PLAN_DAILY_ELECTRIC"]
+      },
+      {
+        "vehicle_type_id": "VT_SUV_HYBRID",
+        "form_factor": "car",
+        "rider_capacity": 7,
+        "propulsion_type": "electric_assist",
+        "max_range_meters": 600000,
+        "name": [
+          {
+            "text": "SUV (Hybrid)",
+            "language": "de"
+          }
+        ],
+        "return_constraint": "roundtrip_station",
+        "default_pricing_plan_id": "PLAN_HOURLY_PREMIUM",
+        "pricing_plan_ids": ["PLAN_HOURLY_PREMIUM", "PLAN_DAILY_PREMIUM"]
+      }
+    ]
+  }
+}
