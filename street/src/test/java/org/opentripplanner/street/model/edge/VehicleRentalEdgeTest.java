@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.opentripplanner.service.vehiclerental.model.RentalVehicleType.PropulsionType.ELECTRIC;
 import static org.opentripplanner.service.vehiclerental.model.RentalVehicleType.PropulsionType.HUMAN;
+import static org.opentripplanner.service.vehiclerental.street.VehicleRentalEdge.isVehicleAvailableDuringRentalPeriod;
 import static org.opentripplanner.street.model.RentalFormFactor.BICYCLE;
 import static org.opentripplanner.street.model.RentalFormFactor.CAR;
 import static org.opentripplanner.street.model.RentalFormFactor.MOPED;
@@ -16,15 +17,23 @@ import static org.opentripplanner.street.model.StreetMode.SCOOTER_RENTAL;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.service.vehiclerental.model.GeofencingZone;
+import org.opentripplanner.service.vehiclerental.model.RentalAvailability;
+import org.opentripplanner.service.vehiclerental.model.RentalVehicleOnStation;
 import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
 import org.opentripplanner.service.vehiclerental.model.TestVehicleRentalStationBuilder;
+import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalVehicle;
 import org.opentripplanner.service.vehiclerental.street.GeofencingZoneExtension;
 import org.opentripplanner.service.vehiclerental.street.VehicleRentalEdge;
@@ -245,6 +254,14 @@ class VehicleRentalEdgeTest {
   }
 
   @Test
+  void testWithFreeFloatingVehicleWithoutUntil() {
+    initFreeFloatingEdgeAndRequestForAvailability(null, Duration.ofMinutes(15), false);
+    var s1 = rent();
+
+    assertFalse(State.isEmpty(s1));
+  }
+
+  @Test
   void testWithFreeFloatingVehicleWithoutRequiredAvailability() {
     var tenMinutesLater = Instant.now().plus(10, ChronoUnit.MINUTES);
     initFreeFloatingEdgeAndRequestForAvailability(tenMinutesLater, Duration.ofMinutes(15), false);
@@ -278,6 +295,148 @@ class VehicleRentalEdgeTest {
     var s1 = rent();
 
     assertFalse(State.isEmpty(s1));
+  }
+
+  @Test
+  void testIsVehicleAvailableDuringRentalPeriod_noVehicles(){
+    State state = initStateWithRentalPeriod(new RentalPeriod(Instant.MIN, Instant.MAX));
+    VehicleRentalStation vehicleRentalStation = initStationWithVehicles(null);
+
+    assertTrue(isVehicleAvailableDuringRentalPeriod(state, vehicleRentalStation));
+  }
+
+  @Test
+  void testIsVehicleAvailableDuringRentalPeriod_EmptyListOfVehicles(){
+    State state = initStateWithRentalPeriod(new RentalPeriod(Instant.MIN, Instant.MAX));
+    VehicleRentalStation vehicleRentalStation = initStationWithVehicles(List.of());
+
+    assertFalse(isVehicleAvailableDuringRentalPeriod(state, vehicleRentalStation));
+  }
+
+  @Test
+  void testIsVehicleAvailableDuringRentalPeriodWithRentalPeriodTooEarly(){
+    Instant rentalStart = LocalDate.of(2026, 1, 1)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+
+    Instant rentalEnd = LocalDate.of(2026, 1, 29)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    State state = initStateWithRentalPeriod(new RentalPeriod(rentalStart, rentalEnd));
+
+    Instant availabilityStart = LocalDate.of(2026, 1, 2)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    Instant availabilityEnd = LocalDate.of(2026, 1, 30)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    RentalAvailability availability = new RentalAvailability(availabilityStart, availabilityEnd);
+    RentalVehicleOnStation vehicle = new RentalVehicleOnStation("vehicle", List.of(availability));
+    VehicleRentalStation vehicleRentalStation = initStationWithVehicles(List.of(vehicle));
+
+    assertFalse(isVehicleAvailableDuringRentalPeriod(state, vehicleRentalStation));
+  }
+
+  @Test
+  void testIsVehicleAvailableDuringRentalPeriodWithRentalPeriodTooLate(){
+    Instant rentalStart = LocalDate.of(2026, 1, 2)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+
+    Instant rentalEnd = LocalDate.of(2026, 1, 30)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    State state = initStateWithRentalPeriod(new RentalPeriod(rentalStart, rentalEnd));
+
+    Instant availabilityStart = LocalDate.of(2026, 1, 1)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    Instant availabilityEnd = LocalDate.of(2026, 1, 29)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    RentalAvailability availability = new RentalAvailability(availabilityStart, availabilityEnd);
+    RentalVehicleOnStation vehicle = new RentalVehicleOnStation("vehicle", List.of(availability));
+    VehicleRentalStation vehicleRentalStation = initStationWithVehicles(List.of(vehicle));
+
+    assertFalse(isVehicleAvailableDuringRentalPeriod(state, vehicleRentalStation));
+  }
+
+  @Test
+  void testIsVehicleAvailableDuringRentalPeriodWithRentalPeriodBetweenAvailability(){
+    Instant rentalStart = LocalDate.of(2026, 1, 2)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+
+    Instant rentalEnd = LocalDate.of(2026, 1, 29)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    State state = initStateWithRentalPeriod(new RentalPeriod(rentalStart, rentalEnd));
+
+    Instant availabilityStart = LocalDate.of(2026, 1, 1)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    Instant availabilityEnd = LocalDate.of(2026, 1, 30)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    RentalAvailability availability = new RentalAvailability(availabilityStart, availabilityEnd);
+    RentalVehicleOnStation vehicle = new RentalVehicleOnStation("vehicle", List.of(availability));
+    VehicleRentalStation vehicleRentalStation = initStationWithVehicles(List.of(vehicle));
+
+    assertTrue(isVehicleAvailableDuringRentalPeriod(state, vehicleRentalStation));
+  }
+
+  @Test
+  void testIsVehicleAvailableDuringRentalPeriodWithRentalPeriodWithoutUntilInAvailability(){
+    Instant rentalStart = LocalDate.of(2026, 1, 2)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+
+    Instant rentalEnd = LocalDate.of(2026, 1, 3)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    State state = initStateWithRentalPeriod(new RentalPeriod(rentalStart, rentalEnd));
+
+    Instant availabilityStart = LocalDate.of(2026, 1, 1)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    RentalAvailability availability = new RentalAvailability(availabilityStart, null);
+    RentalVehicleOnStation vehicle = new RentalVehicleOnStation("vehicle", List.of(availability));
+    VehicleRentalStation vehicleRentalStation = initStationWithVehicles(List.of(vehicle));
+
+    assertTrue(isVehicleAvailableDuringRentalPeriod(state, vehicleRentalStation));
+  }
+
+  @Test
+  void testIsVehicleAvailableDuringRentalPeriodWithRentalPeriodBetweenSecondAvailability(){
+    Instant rentalStart = LocalDate.of(2026, 1, 3)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+
+    Instant rentalEnd = LocalDate.of(2026, 1, 4)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    State state = initStateWithRentalPeriod(new RentalPeriod(rentalStart, rentalEnd));
+
+    Instant availabilityStart1 = LocalDate.of(2026, 1, 1)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    Instant availabilityEnd1 = LocalDate.of(2026, 1, 2)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    RentalAvailability availability1 = new RentalAvailability(availabilityStart1, availabilityEnd1);
+
+    Instant availabilityStart2 = LocalDate.of(2026, 1, 3)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    Instant availabilityEnd2 = LocalDate.of(2026, 1, 4)
+      .atStartOfDay()
+      .toInstant(ZoneOffset.UTC);
+    RentalAvailability availability2 = new RentalAvailability(availabilityStart2, availabilityEnd2);
+
+    RentalVehicleOnStation vehicle = new RentalVehicleOnStation("vehicle", List.of(availability1,availability2));
+    VehicleRentalStation vehicleRentalStation = initStationWithVehicles(List.of(vehicle));
+
+    assertTrue(isVehicleAvailableDuringRentalPeriod(state, vehicleRentalStation));
   }
 
   @Nested
@@ -438,6 +597,26 @@ class VehicleRentalEdgeTest {
       streetSearchRequestBuilder.withRentalPeriod(rentalPeriod);
     }
     this.request = streetSearchRequestBuilder.build();
+  }
+
+  private State initStateWithRentalPeriod(RentalPeriod rentalPeriod) {
+    StreetSearchRequest request = StreetSearchRequest.of().withRentalPeriod(rentalPeriod).build();
+    return new State(new VehicleRentalPlaceVertex(new VehicleRentalStation()), request);
+  }
+
+  private VehicleRentalStation initStationWithVehicles(List<RentalVehicleOnStation> vehicleOnStations) {
+    RentalVehicleType type = RentalVehicleType.of()
+      .withFormFactor(CAR)
+      .withId(new FeedScopedId("feed", "test"))
+      .withPropulsionType(ELECTRIC)
+      .build();
+    Map<RentalVehicleType, Integer> vehicleTypesAvailable = new HashMap<>();
+    vehicleTypesAvailable.put(type, 1);
+    return VehicleRentalStation
+      .of()
+      .withVehiclesOnStation(vehicleOnStations)
+      .withVehicleTypesAvailable(vehicleTypesAvailable)
+      .build();
   }
 
   private State[] rent() {
