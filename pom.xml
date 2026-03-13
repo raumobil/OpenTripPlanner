@@ -79,7 +79,7 @@
         <slf4j.version>2.0.17</slf4j.version>
         <!-- Other properties -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <GITHUB_REPOSITORY>opentripplanner/OpenTripPlanner</GITHUB_REPOSITORY>
+        <GITHUB_REPOSITORY>raumobil/OpenTripPlanner</GITHUB_REPOSITORY>
         <!-- Set argLine to an empty string so that running the tests without the coverage agent works.
              When running `mvn jacoco:prepare-agent test` argLine is replaced with the one activating the agent.
         -->
@@ -421,10 +421,10 @@
                         </platforms>
                     </from>
                     <to>
-                        <image>${env.CONTAINER_REPO}</image>
+                        <image>${env.REGISTRY_REPO}</image>
                         <auth>
-                            <username>${env.CONTAINER_REGISTRY_USER}</username>
-                            <password>${env.CONTAINER_REGISTRY_PASSWORD}</password>
+                            <username>${env.REGISTRY_USER}</username>
+                            <password>${env.REGISTRY_PASSWORD}</password>
                         </auth>
                     </to>
                     <extraDirectories>
