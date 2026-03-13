@@ -42,6 +42,7 @@ public final class VehicleRentalStation implements VehicleRentalPlace {
   private final int spacesAvailable;
   private final int spacesDisabled;
   private final Map<RentalVehicleType, Integer> vehicleSpacesAvailable;
+  private final List<RentalVehicleOnStation> vehiclesOnStation;
 
   private final boolean isRenting;
   private final boolean isReturning;
@@ -68,6 +69,7 @@ public final class VehicleRentalStation implements VehicleRentalPlace {
     this.spacesAvailable = 0;
     this.spacesDisabled = 0;
     this.vehicleSpacesAvailable = Map.of();
+    this.vehiclesOnStation = null;
     this.isRenting = true;
     this.isReturning = true;
     this.overloadingAllowed = false;
@@ -91,6 +93,7 @@ public final class VehicleRentalStation implements VehicleRentalPlace {
     this.vehicleTypesAvailable = Map.copyOf(builder.vehicleTypesAvailable());
     this.spacesAvailable = builder.spacesAvailable();
     this.spacesDisabled = builder.spacesDisabled();
+    this.vehiclesOnStation = builder.vehiclesOnStation();
     this.vehicleSpacesAvailable = Map.copyOf(builder.vehicleSpacesAvailable());
     this.isRenting = builder.isRenting();
     this.isReturning = builder.isReturning();
@@ -171,6 +174,9 @@ public final class VehicleRentalStation implements VehicleRentalPlace {
   public Map<RentalVehicleType, Integer> vehicleSpacesAvailable() {
     return vehicleSpacesAvailable;
   }
+
+  @Nullable
+  public List<RentalVehicleOnStation> vehiclesOnStation() {return vehiclesOnStation;}
 
   public boolean isRenting() {
     return isRenting;
@@ -360,7 +366,8 @@ public final class VehicleRentalStation implements VehicleRentalPlace {
       Objects.equals(system, that.system) &&
       Objects.equals(rentalUris, that.rentalUris) &&
       Objects.equals(vehicleTypesAvailable, that.vehicleTypesAvailable) &&
-      Objects.equals(vehicleSpacesAvailable, that.vehicleSpacesAvailable)
+      Objects.equals(vehicleSpacesAvailable, that.vehicleSpacesAvailable) &&
+      Objects.equals(vehiclesOnStation, that.vehiclesOnStation)
     );
   }
 
@@ -382,6 +389,7 @@ public final class VehicleRentalStation implements VehicleRentalPlace {
       spacesAvailable,
       spacesDisabled,
       vehicleSpacesAvailable,
+      vehiclesOnStation,
       isRenting,
       isReturning,
       overloadingAllowed,

@@ -1,5 +1,6 @@
 package org.opentripplanner.service.vehiclerental.model;
 
+import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
 import org.opentripplanner.core.model.i18n.I18NString;
@@ -24,6 +25,7 @@ public class VehicleRentalStationBuilder {
   private Integer spacesAvailable;
   private Integer spacesDisabled;
   private Map<RentalVehicleType, Integer> vehicleSpacesAvailable = Map.of();
+  private List<RentalVehicleOnStation> vehiclesOnStation;
   private Boolean isRenting;
   private Boolean isReturning;
   private Boolean overloadingAllowed;
@@ -48,6 +50,7 @@ public class VehicleRentalStationBuilder {
     this.spacesAvailable = original.spacesAvailable();
     this.spacesDisabled = original.spacesDisabled();
     this.vehicleSpacesAvailable = original.vehicleSpacesAvailable();
+    this.vehiclesOnStation = original.vehiclesOnStation();
     this.isRenting = original.isRenting();
     this.isReturning = original.isReturning();
     this.overloadingAllowed = original.overloadingAllowed();
@@ -119,6 +122,10 @@ public class VehicleRentalStationBuilder {
 
   public Map<RentalVehicleType, Integer> vehicleSpacesAvailable() {
     return vehicleSpacesAvailable;
+  }
+
+  public List<RentalVehicleOnStation> vehiclesOnStation() {
+    return vehiclesOnStation;
   }
 
   public boolean isRenting() {
@@ -226,6 +233,13 @@ public class VehicleRentalStationBuilder {
     @Nullable Map<RentalVehicleType, Integer> vehicleSpacesAvailable
   ) {
     this.vehicleSpacesAvailable = vehicleSpacesAvailable;
+    return this;
+  }
+
+  public VehicleRentalStationBuilder withVehiclesOnStation(
+    @Nullable List<RentalVehicleOnStation> vehiclesOnStation
+  ) {
+    this.vehiclesOnStation = vehiclesOnStation;
     return this;
   }
 

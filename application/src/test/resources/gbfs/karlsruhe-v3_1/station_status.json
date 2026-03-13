@@ -1,0 +1,85 @@
+{
+  "last_updated": "2026-03-03T10:58:44.934+00:00",
+  "ttl": 60,
+  "version": "3.1-RC2",
+  "data": {
+    "stations": [
+      {
+        "station_id": "STA001",
+        "num_vehicles_available": 3,
+        "vehicle_types_available": [
+          {
+            "vehicle_type_id": "VT_COMPACT_COMBUSTION",
+            "count": 0
+          },
+          {
+            "vehicle_type_id": "VT_MIDSIZE_ELECTRIC",
+            "count": 1
+          }
+        ],
+        "num_vehicles_disabled": 0,
+        "num_docks_available": 5,
+        "num_docks_disabled": 0,
+        "is_installed": true,
+        "is_renting": true,
+        "is_returning": true,
+        "last_reported": "2026-03-03T10:58:44.934+00:00"
+      },
+      {
+        "station_id": "STA002",
+        "num_vehicles_available": 2,
+        "vehicle_types_available": [
+          {
+            "vehicle_type_id": "VT_COMPACT_COMBUSTION",
+            "count": 1
+          },
+          {
+            "vehicle_type_id": "VT_SUV_HYBRID",
+            "count": 1
+          }
+        ],
+        "num_vehicles_disabled": 0,
+        "num_docks_available": 2,
+        "num_docks_disabled": 0,
+        "is_installed": true,
+        "is_renting": true,
+        "is_returning": true,
+        "last_reported": "2026-03-03T10:58:44.934+00:00"
+      },
+      {
+        "station_id": "STA003",
+        "num_vehicles_available": 1,
+        "vehicle_types_available": [
+          {
+            "vehicle_type_id": "VT_MIDSIZE_ELECTRIC",
+            "count": 1
+          }
+        ],
+        "num_vehicles_disabled": 1,
+        "num_docks_available": 5,
+        "num_docks_disabled": 0,
+        "is_installed": true,
+        "is_renting": true,
+        "is_returning": true,
+        "last_reported": "2026-03-03T10:58:44.934+00:00"
+      },
+      {
+        "station_id": "STA004",
+        "num_vehicles_available": 1,
+        "vehicle_types_available": [
+          {
+            "vehicle_type_id": "VT_MIDSIZE_ELECTRIC",
+            "count": 1
+          }
+        ],
+        "num_vehicles_disabled": 1,
+        "num_docks_available": 5,
+        "num_docks_disabled": 0,
+        "is_installed": true,
+        "is_renting": true,
+        "is_returning": true,
+        "last_reported": "2026-03-03T10:58:44.934+00:00"
+      }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "last_updated": "2026-03-03T10:58:44.934+00:00",
+  "ttl": 60,
+  "version": "3.1-RC2",
+  "data": {
+    "vehicles": [
+      {
+        "vehicle_id": "V001",
+        "vehicle_type_id": "VT_COMPACT_COMBUSTION",
+        "station_id": "STA001",
+        "pricing_plan_id": "PLAN_HOURLY_BASIC",
+        "availabilities": [
+          {
+            "from": "2026-03-03T14:04:19.000+00:00",
+            "until": "2026-03-03T16:04:19.000+00:00"
+          }
+        ]
+      },
+      {
+        "vehicle_id": "V002",
+        "vehicle_type_id": "VT_MIDSIZE_ELECTRIC",
+        "station_id": "STA002",
+        "pricing_plan_id": "PLAN_HOURLY_ELECTRIC",
+        "availabilities": [
+          {
+            "from": "2026-03-03T12:04:19.337+00:00"
+          }
+        ]
+      },
+      {
+        "vehicle_id": "V003",
+        "vehicle_type_id": "VT_COMPACT_COMBUSTION",
+        "station_id": "STA003",
+        "pricing_plan_id": "PLAN_HOURLY_BASIC",
+        "availabilities": [
+          {
+            "from": "2026-03-03T14:04:19.337+00:00",
+            "until": "2026-03-03T16:04:19.337+00:00"
+          },
+          {
+            "from": "2026-03-03T18:04:19.337+00:00",
+            "until": "2026-03-03T20:04:19.337+00:00"
+          }
+        ]
+      },
+      {
+        "vehicle_id": "V004",
+        "vehicle_type_id": "VT_SUV_HYBRID",
+        "station_id": "STA003",
+        "pricing_plan_id": "PLAN_HOURLY_PREMIUM",
+        "availabilities": []
+      },
+      {
+        "vehicle_id": "V005",
+        "vehicle_type_id": "VT_SUV_HYBRID",
+        "station_id": "STA004",
+        "pricing_plan_id": "PLAN_HOURLY_PREMIUM",
+        "availabilities": [
+          {
+            "from": "2026-03-03T17:04:19.337+00:00",
+            "until": "2026-03-03T18:04:19.337+00:00"
+          }
+        ]
+      }
+    ]
+  }
+}
