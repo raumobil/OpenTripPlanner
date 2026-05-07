@@ -31,7 +31,7 @@ public class GbfsFeedLoaderAndMapper {
     URI uri = new URI(params.url());
 
     var client = otpHttpClientFactory.create(LOG);
-    var gbfsNode = client.getAndMapAsJsonNode(uri, Map.of(), new ObjectMapper());
+    var gbfsNode = client.getAndMapAsJsonNode(uri, params.httpHeaders().asMap(), new ObjectMapper());
     var gbfsFeedVersion = JsonUtils.asText(gbfsNode, "version").orElse(null);
 
     switch (gbfsFeedVersion) {
