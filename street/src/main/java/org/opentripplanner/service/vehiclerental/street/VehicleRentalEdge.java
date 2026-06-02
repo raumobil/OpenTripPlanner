@@ -182,7 +182,7 @@ public class VehicleRentalEdge extends Edge {
    */
   public static boolean isVehicleAvailableDuringRentalPeriod(State s0, VehicleRentalPlace place) {
     var rentalPeriod = s0.getRequest().rentalPeriod();
-    if (rentalPeriod != null && place.isCarStation()) {
+    if (rentalPeriod != null) {
       if (place instanceof VehicleRentalVehicle) {
         var vehicleRentalVehicle = (VehicleRentalVehicle) place;
         var availableUntil = vehicleRentalVehicle.availableUntil();
