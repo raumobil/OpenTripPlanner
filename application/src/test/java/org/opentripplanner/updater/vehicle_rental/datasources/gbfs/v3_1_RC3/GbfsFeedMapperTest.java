@@ -1,4 +1,4 @@
-package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2;
+package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,7 +18,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_types.GBFSVehicleType;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_types.GBFSVehicleType;
 import org.opentripplanner.core.model.i18n.TranslatedString;
 import org.opentripplanner.framework.io.OtpHttpClientFactory;
 import org.opentripplanner.service.vehiclerental.model.GeofencingZone;
@@ -40,7 +40,7 @@ class GbfsFeedMapperTest {
   private static final String SYSTEM_ID = "testfeed_3_1";
 
   @Test
-  void makeStationFromv3_1_RC20() {
+  void makeStationFromv3_1_RC30() {
     var params = new GbfsVehicleRentalDataSourceParameters(
       "file:src/test/resources/gbfs/karlsruhe-v3_1/gbfs.json",
       null,

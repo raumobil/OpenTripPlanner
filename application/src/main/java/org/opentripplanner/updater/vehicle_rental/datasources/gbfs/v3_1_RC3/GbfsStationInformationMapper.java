@@ -1,15 +1,15 @@
-package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2;
+package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3;
 
-import static org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2.GbfsFeedMapper.localizedString;
-import static org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2.GbfsFeedMapper.optionalLocalizedString;
+import static org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3.GbfsFeedMapper.localizedString;
+import static org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3.GbfsFeedMapper.optionalLocalizedString;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import org.mobilitydata.gbfs.v3_1_RC2.station_information.GBFSName;
-import org.mobilitydata.gbfs.v3_1_RC2.station_information.GBFSRentalUris;
-import org.mobilitydata.gbfs.v3_1_RC2.station_information.GBFSShortName;
-import org.mobilitydata.gbfs.v3_1_RC2.station_information.GBFSStation;
+import org.mobilitydata.gbfs.v3_1_RC3.station_information.GBFSName;
+import org.mobilitydata.gbfs.v3_1_RC3.station_information.GBFSRentalUris;
+import org.mobilitydata.gbfs.v3_1_RC3.station_information.GBFSShortName;
+import org.mobilitydata.gbfs.v3_1_RC3.station_information.GBFSStation;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;

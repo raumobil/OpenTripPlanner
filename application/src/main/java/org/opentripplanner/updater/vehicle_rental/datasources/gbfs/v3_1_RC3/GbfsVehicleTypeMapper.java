@@ -1,9 +1,9 @@
-package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2;
+package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3;
 
-import static org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2.GbfsFeedMapper.optionalLocalizedString;
+import static org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3.GbfsFeedMapper.optionalLocalizedString;
 
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_types.GBFSName;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_types.GBFSVehicleType;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_types.GBFSName;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_types.GBFSVehicleType;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
 import org.opentripplanner.street.model.RentalFormFactor;
@@ -47,7 +47,6 @@ class GbfsVehicleTypeMapper {
       case CARGO_BICYCLE -> RentalFormFactor.CARGO_BICYCLE;
       case CAR -> RentalFormFactor.CAR;
       case MOPED -> RentalFormFactor.MOPED;
-      case SCOOTER -> RentalFormFactor.SCOOTER;
       case SCOOTER_STANDING -> RentalFormFactor.SCOOTER_STANDING;
       case SCOOTER_SEATED -> RentalFormFactor.SCOOTER_SEATED;
       case OTHER -> RentalFormFactor.OTHER;

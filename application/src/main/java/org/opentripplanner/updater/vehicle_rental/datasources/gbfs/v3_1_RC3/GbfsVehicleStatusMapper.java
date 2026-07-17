@@ -1,11 +1,11 @@
-package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2;
+package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3;
 
 import static java.util.Objects.requireNonNullElse;
 
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.Nullable;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_status.GBFSVehicle;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_status.GBFSVehicle;
 import org.opentripplanner.core.model.basic.Distance;
 import org.opentripplanner.core.model.basic.Ratio;
 import org.opentripplanner.core.model.i18n.I18NString;

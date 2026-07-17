@@ -1,10 +1,10 @@
-package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2;
+package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_status.GBFSVehicle;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_status.GBFSVehicle;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
