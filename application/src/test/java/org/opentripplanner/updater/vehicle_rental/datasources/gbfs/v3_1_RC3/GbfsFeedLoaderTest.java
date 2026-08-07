@@ -1,4 +1,4 @@
-package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2;
+package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -7,15 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.mobilitydata.gbfs.v3_1_RC2.geofencing_zones.GBFSFeature;
-import org.mobilitydata.gbfs.v3_1_RC2.geofencing_zones.GBFSGeofencingZones;
-import org.mobilitydata.gbfs.v3_1_RC2.geofencing_zones.GBFSGeofencingZones__1;
-import org.mobilitydata.gbfs.v3_1_RC2.station_information.GBFSStationInformation;
-import org.mobilitydata.gbfs.v3_1_RC2.station_status.GBFSStationStatus;
-import org.mobilitydata.gbfs.v3_1_RC2.system_information.GBFSSystemInformation;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_availability.GBFSVehicleAvailability;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_types.GBFSVehicleType;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_types.GBFSVehicleTypes;
+import org.mobilitydata.gbfs.v3_1_RC3.geofencing_zones.GBFSFeature;
+import org.mobilitydata.gbfs.v3_1_RC3.geofencing_zones.GBFSGeofencingZones;
+import org.mobilitydata.gbfs.v3_1_RC3.geofencing_zones.GBFSGeofencingZones__1;
+import org.mobilitydata.gbfs.v3_1_RC3.station_information.GBFSStationInformation;
+import org.mobilitydata.gbfs.v3_1_RC3.station_status.GBFSStationStatus;
+import org.mobilitydata.gbfs.v3_1_RC3.system_information.GBFSSystemInformation;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_availability.GBFSVehicleAvailability;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_types.GBFSVehicleType;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_types.GBFSVehicleTypes;
 import org.opentripplanner.framework.io.OtpHttpClient;
 import org.opentripplanner.framework.io.OtpHttpClientFactory;
 import org.opentripplanner.updater.spi.HttpHeaders;
@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This tests that
- * {@link org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2.GbfsFeedLoader}
+ * {@link org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3.GbfsFeedLoader}
  * handles loading of different versions of GBFS correctly, that the optional language parameter
  * works correctly, and that the different files in a GBFS bundle are all included, with all
  * information in them.

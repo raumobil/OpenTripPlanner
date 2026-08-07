@@ -1,4 +1,4 @@
-package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2;
+package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -19,9 +19,9 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.mobilitydata.gbfs.v3_1_RC2.station_status.GBFSStation;
-import org.mobilitydata.gbfs.v3_1_RC2.station_status.GBFSVehicleDocksAvailable;
-import org.mobilitydata.gbfs.v3_1_RC2.station_status.GBFSVehicleTypesAvailable;
+import org.mobilitydata.gbfs.v3_1_RC3.station_status.GBFSStation;
+import org.mobilitydata.gbfs.v3_1_RC3.station_status.GBFSVehicleDocksAvailable;
+import org.mobilitydata.gbfs.v3_1_RC3.station_status.GBFSVehicleTypesAvailable;
 import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
 import org.opentripplanner.service.vehiclerental.model.RentalVehicleTypeCount;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;

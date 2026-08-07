@@ -1,14 +1,14 @@
-package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2;
+package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3;
 
-import static org.mobilitydata.gbfs.v3_1_RC2.gbfs.GBFSFeed.Name.VEHICLE_AVAILABILITY;
+import static org.mobilitydata.gbfs.v3_1_RC3.gbfs.GBFSFeed.Name.VEHICLE_AVAILABILITY;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
-import org.mobilitydata.gbfs.v3_1_RC2.gbfs.GBFSFeed;
-import org.mobilitydata.gbfs.v3_1_RC2.gbfs.GBFSFeedName;
-import org.mobilitydata.gbfs.v3_1_RC2.gbfs.GBFSGbfs;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_availability.GBFSVehicleAvailability;
+import org.mobilitydata.gbfs.v3_1_RC3.gbfs.GBFSFeed;
+import org.mobilitydata.gbfs.v3_1_RC3.gbfs.GBFSFeedName;
+import org.mobilitydata.gbfs.v3_1_RC3.gbfs.GBFSGbfs;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_availability.GBFSVehicleAvailability;
 import org.opentripplanner.framework.io.OtpHttpClient;
 import org.opentripplanner.updater.spi.HttpHeaders;
 import org.opentripplanner.updater.spi.UpdaterConstructionException;

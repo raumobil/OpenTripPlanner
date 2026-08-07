@@ -1,12 +1,12 @@
-package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2;
+package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
-import org.mobilitydata.gbfs.v3_1_RC2.station_status.GBFSStation;
-import org.mobilitydata.gbfs.v3_1_RC2.station_status.GBFSVehicleTypesAvailable;
+import org.mobilitydata.gbfs.v3_1_RC3.station_status.GBFSStation;
+import org.mobilitydata.gbfs.v3_1_RC3.station_status.GBFSVehicleTypesAvailable;
 import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
 import org.opentripplanner.service.vehiclerental.model.ReturnPolicy;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;

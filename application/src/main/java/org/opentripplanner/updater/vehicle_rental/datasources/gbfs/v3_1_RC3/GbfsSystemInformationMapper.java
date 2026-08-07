@@ -1,13 +1,13 @@
-package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2;
+package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3;
 
-import static org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2.GbfsFeedMapper.localizedString;
-import static org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2.GbfsFeedMapper.optionalLocalizedString;
+import static org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3.GbfsFeedMapper.localizedString;
+import static org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3.GbfsFeedMapper.optionalLocalizedString;
 
 import javax.annotation.Nullable;
-import org.mobilitydata.gbfs.v3_1_RC2.system_information.GBFSData;
-import org.mobilitydata.gbfs.v3_1_RC2.system_information.GBFSName;
-import org.mobilitydata.gbfs.v3_1_RC2.system_information.GBFSOperator;
-import org.mobilitydata.gbfs.v3_1_RC2.system_information.GBFSShortName;
+import org.mobilitydata.gbfs.v3_1_RC3.system_information.GBFSData;
+import org.mobilitydata.gbfs.v3_1_RC3.system_information.GBFSName;
+import org.mobilitydata.gbfs.v3_1_RC3.system_information.GBFSOperator;
+import org.mobilitydata.gbfs.v3_1_RC3.system_information.GBFSShortName;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalSystem;
 
 class GbfsSystemInformationMapper {

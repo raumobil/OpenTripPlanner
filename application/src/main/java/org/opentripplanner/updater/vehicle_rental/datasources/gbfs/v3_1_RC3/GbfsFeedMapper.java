@@ -1,4 +1,4 @@
-package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC2;
+package org.opentripplanner.updater.vehicle_rental.datasources.gbfs.v3_1_RC3;
 
 import static java.util.stream.Collectors.toMap;
 
@@ -10,16 +10,16 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
-import org.mobilitydata.gbfs.v3_1_RC2.geofencing_zones.GBFSGeofencingZones;
-import org.mobilitydata.gbfs.v3_1_RC2.station_information.GBFSStationInformation;
-import org.mobilitydata.gbfs.v3_1_RC2.station_status.GBFSStation;
-import org.mobilitydata.gbfs.v3_1_RC2.station_status.GBFSStationStatus;
-import org.mobilitydata.gbfs.v3_1_RC2.system_information.GBFSSystemInformation;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_availability.GBFSVehicle;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_availability.GBFSVehicleAvailability;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_status.GBFSVehicleStatus;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_types.GBFSVehicleType;
-import org.mobilitydata.gbfs.v3_1_RC2.vehicle_types.GBFSVehicleTypes;
+import org.mobilitydata.gbfs.v3_1_RC3.geofencing_zones.GBFSGeofencingZones;
+import org.mobilitydata.gbfs.v3_1_RC3.station_information.GBFSStationInformation;
+import org.mobilitydata.gbfs.v3_1_RC3.station_status.GBFSStation;
+import org.mobilitydata.gbfs.v3_1_RC3.station_status.GBFSStationStatus;
+import org.mobilitydata.gbfs.v3_1_RC3.system_information.GBFSSystemInformation;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_availability.GBFSVehicle;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_availability.GBFSVehicleAvailability;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_status.GBFSVehicleStatus;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_types.GBFSVehicleType;
+import org.mobilitydata.gbfs.v3_1_RC3.vehicle_types.GBFSVehicleTypes;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.core.model.i18n.TranslatedString;
 import org.opentripplanner.framework.application.OTPFeature;
