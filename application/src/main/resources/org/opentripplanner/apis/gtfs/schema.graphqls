@@ -4198,6 +4198,18 @@ input BicycleRentalPreferencesInput {
   come with an extra cost.
   """
   destinationBicyclePolicy: DestinationBicyclePolicyInput
+  """
+  The assumed duration of a car or bicycle rental trip, used to ensure vehicle availability during the
+  rental period.
+    
+  The rental time is calculated relative to the request search time:
+  - Depart-after search: `request time + rental duration`
+  - Arrive-by search: `request time - rental duration`
+    
+  Note: Rental duration only applies to  free-floating vehicles in direct street searches.
+  This is not supported in access/egress in transit searches.
+  """
+  rentalDuration: Duration
 }
 
 "Costs related to walking a bicycle."

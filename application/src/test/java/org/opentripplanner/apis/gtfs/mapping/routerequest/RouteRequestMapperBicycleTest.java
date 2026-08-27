@@ -95,6 +95,31 @@ class RouteRequestMapperBicycleTest {
   }
 
   @Test
+  void testRentalDurationInBicycleRentalPreferences() {
+    var bicycleArgs = testCtx.basicRequest();
+    Duration rentalDuration = Duration.ofHours(1);
+    bicycleArgs.put("modes", Map.ofEntries(entry("direct", List.of("BICYCLE_RENTAL", "WALK"))));
+    bicycleArgs.put(
+      "preferences",
+      Map.ofEntries(
+        entry(
+          "street",
+          Map.ofEntries(
+            entry(
+              "bicycle",
+              Map.ofEntries(entry("rental", Map.ofEntries(entry("rentalDuration", rentalDuration))))
+            )
+          )
+        )
+      )
+    );
+    var env = testCtx.executionContext(bicycleArgs);
+    var routeRequest = RouteRequestMapper.toRouteRequest(env, testCtx.context());
+    var rentalDurationOfJourney = routeRequest.journey().direct().rentalDuration();
+    assertEquals(rentalDuration, rentalDurationOfJourney);
+  }
+
+  @Test
   void testBikeTrianglePreferences() {
     var bicycleArgs = testCtx.basicRequest();
     var bikeSafety = 0.3;
