@@ -142,18 +142,26 @@ public class ModePreferencesMapper {
   private static Duration getRentalDurationByQueryArgs(
     GraphQLTypes.GraphQLQueryTypePlanConnectionArgs args
   ) {
+    Duration rentalDuration = null;
     var graphQLStreet = args.getGraphQLPreferences().getGraphQLStreet();
     if (graphQLStreet != null) {
       var graphQLCar = graphQLStreet.getGraphQLCar();
       if (graphQLCar != null) {
         var graphQLRental = graphQLCar.getGraphQLRental();
         if (graphQLRental != null) {
-          var rentalDuration = graphQLRental.getGraphQLRentalDuration();
-          if (rentalDuration != null) {
-            return DurationUtils.requireNonNegative(rentalDuration, "rentalDuration");
-          }
+          rentalDuration = graphQLRental.getGraphQLRentalDuration();
         }
       }
+      var graphQLBicycle = graphQLStreet.getGraphQLBicycle();
+      if (graphQLBicycle != null) {
+        var graphQLRental = graphQLBicycle.getGraphQLRental();
+        if (graphQLRental != null) {
+          rentalDuration = graphQLRental.getGraphQLRentalDuration();
+        }
+      }
+    }
+    if (rentalDuration != null) {
+      return DurationUtils.requireNonNegative(rentalDuration, "rentalDuration");
     }
     return null;
   }

@@ -331,6 +331,7 @@ public class GraphQLTypes {
     private List<String> allowedNetworks;
     private List<String> bannedNetworks;
     private GraphQLDestinationBicyclePolicyInput destinationBicyclePolicy;
+    private java.time.Duration rentalDuration;
 
     public GraphQLBicycleRentalPreferencesInput(Map<String, Object> args) {
       if (args != null) {
@@ -339,6 +340,7 @@ public class GraphQLTypes {
         this.destinationBicyclePolicy = new GraphQLDestinationBicyclePolicyInput(
           (Map<String, Object>) args.get("destinationBicyclePolicy")
         );
+        this.rentalDuration = (java.time.Duration) args.get("rentalDuration");
       }
     }
 
@@ -354,6 +356,10 @@ public class GraphQLTypes {
       return this.destinationBicyclePolicy;
     }
 
+    public java.time.Duration getGraphQLRentalDuration() {
+      return this.rentalDuration;
+    }
+
     public void setGraphQLAllowedNetworks(List<String> allowedNetworks) {
       this.allowedNetworks = allowedNetworks;
     }
@@ -366,6 +372,10 @@ public class GraphQLTypes {
       GraphQLDestinationBicyclePolicyInput destinationBicyclePolicy
     ) {
       this.destinationBicyclePolicy = destinationBicyclePolicy;
+    }
+
+    public void setGraphQLRentalDuration(java.time.Duration rentalDuration) {
+      this.rentalDuration = rentalDuration;
     }
   }
 
@@ -463,12 +473,6 @@ public class GraphQLTypes {
   }
 
   public enum GraphQLBikesAllowed {
-    ALLOWED,
-    NOT_ALLOWED,
-    NO_INFORMATION,
-  }
-
-  public enum GraphQLCarsAllowed {
     ALLOWED,
     NOT_ALLOWED,
     NO_INFORMATION,
@@ -726,6 +730,12 @@ public class GraphQLTypes {
     public void setGraphQLRentalDuration(java.time.Duration rentalDuration) {
       this.rentalDuration = rentalDuration;
     }
+  }
+
+  public enum GraphQLCarsAllowed {
+    ALLOWED,
+    NOT_ALLOWED,
+    NO_INFORMATION,
   }
 
   public static class GraphQLCyclingOptimizationInput {

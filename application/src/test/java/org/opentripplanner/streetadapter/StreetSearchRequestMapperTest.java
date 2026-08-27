@@ -319,6 +319,27 @@ class StreetSearchRequestMapperTest {
     assertEquals(dateTime.plus(rentalDuration), subject.rentalPeriod().end());
   }
 
+  @Test
+  void mapBicycleRentalDepartureRequest() {
+    var builder = builder();
+
+    Instant dateTime = Instant.parse("2022-11-10T10:00:00Z");
+    var rentalDuration = Duration.ofHours(2);
+    builder.withDateTime(dateTime);
+    builder.withJourney(jb ->
+      jb
+        .withModes(RequestModes.of().withAllStreetModes(StreetMode.BIKE).build())
+        .withDirect(new StreetRequest(StreetMode.BIKE, rentalDuration))
+    );
+
+    var request = builder.buildRequest();
+    var subject = StreetSearchRequestMapper.mapInternal(request).build();
+
+    assertEquals(dateTime, subject.startTime());
+    assertEquals(dateTime, subject.rentalPeriod().start());
+    assertEquals(dateTime.plus(rentalDuration), subject.rentalPeriod().end());
+  }
+
   /**
    * test properties, which may differ on arrival route requests
    */
@@ -335,6 +356,32 @@ class StreetSearchRequestMapperTest {
     builder.withTo(to);
     builder.withJourney(jb ->
       jb.withDirect(new StreetRequest(StreetMode.CAR_RENTAL, rentalDuration))
+    );
+
+    var request = builder.buildRequest();
+    var subject = StreetSearchRequestMapper.mapInternal(request).build();
+
+    assertEquals(dateTime, subject.startTime());
+    assertEquals(dateTime.minus(rentalDuration), subject.rentalPeriod().start());
+    assertEquals(dateTime, subject.rentalPeriod().end());
+  }
+
+  /**
+   * test properties, which may differ on arrival route requests
+   */
+  @Test
+  void mapBicycleRentalArrivalRequest() {
+    var builder = builder().withArriveBy(true);
+
+    var dateTime = Instant.parse("2022-11-10T10:00:00Z");
+    var rentalDuration = Duration.ofHours(2);
+    builder.withDateTime(dateTime);
+    var from = new GenericLocation(null, TimetableRepositoryForTest.id("STOP"), null, null);
+    builder.withFrom(from);
+    var to = GenericLocation.fromCoordinate(60.0, 20.0);
+    builder.withTo(to);
+    builder.withJourney(jb ->
+      jb.withDirect(new StreetRequest(StreetMode.BIKE_RENTAL, rentalDuration))
     );
 
     var request = builder.buildRequest();
