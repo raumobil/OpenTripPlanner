@@ -18,7 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Class for managing the state and loading of complete GBFS version 3.1 datasets, and updating them
+ * Class for managing the state and loading of complete GBFS version 3.2 datasets, and updating them
  * according to individual feed's TTL rules.
  */
 public class GbfsFeedLoader

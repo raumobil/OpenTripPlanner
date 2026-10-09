@@ -4574,6 +4574,25 @@ public class GraphQLTypes {
     }
   }
 
+  public static class GraphQLQueryTypeVirtualRentalStationsArgs {
+
+    private List<String> ids;
+
+    public GraphQLQueryTypeVirtualRentalStationsArgs(Map<String, Object> args) {
+      if (args != null) {
+        this.ids = (List<String>) args.get("ids");
+      }
+    }
+
+    public List<String> getGraphQLIds() {
+      return this.ids;
+    }
+
+    public void setGraphQLIds(List<String> ids) {
+      this.ids = ids;
+    }
+  }
+
   public enum GraphQLRealtimeState {
     ADDED,
     CANCELED,

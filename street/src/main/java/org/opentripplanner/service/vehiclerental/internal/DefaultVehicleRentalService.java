@@ -15,6 +15,7 @@ import org.opentripplanner.service.vehiclerental.VehicleRentalService;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalPlace;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalVehicle;
+import org.opentripplanner.service.vehiclerental.model.VirtualRentalStation;
 import org.opentripplanner.street.model.RentalFormFactor;
 
 @Singleton
@@ -56,6 +57,11 @@ public class DefaultVehicleRentalService implements VehicleRentalService, Vehicl
   @Override
   public List<VehicleRentalStation> getVehicleRentalStations() {
     return getVehicleRentalStationsAsStream().toList();
+  }
+
+  @Override
+  public List<VirtualRentalStation> getVirtualRentalStations() {
+    return getVirtualRentalStationsAsStream().toList();
   }
 
   @Override
@@ -119,6 +125,14 @@ public class DefaultVehicleRentalService implements VehicleRentalService, Vehicl
       .stream()
       .filter(VehicleRentalStation.class::isInstance)
       .map(VehicleRentalStation.class::cast);
+  }
+
+  private Stream<VirtualRentalStation> getVirtualRentalStationsAsStream() {
+    return rentalPlaces
+      .values()
+      .stream()
+      .filter(VirtualRentalStation.class::isInstance)
+      .map(VirtualRentalStation.class::cast);
   }
 
   @Override

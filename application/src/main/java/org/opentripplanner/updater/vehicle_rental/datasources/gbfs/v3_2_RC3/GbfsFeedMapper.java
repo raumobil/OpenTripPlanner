@@ -10,6 +10,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
 import org.mobilitydata.gbfs.v3_2_RC3.geofencing_zones.GBFSGeofencingZones;
 import org.mobilitydata.gbfs.v3_2_RC3.station_information.GBFSStationInformation;
 import org.mobilitydata.gbfs.v3_2_RC3.station_status.GBFSStation;
@@ -20,6 +21,8 @@ import org.mobilitydata.gbfs.v3_2_RC3.vehicle_availability.GBFSVehicleAvailabili
 import org.mobilitydata.gbfs.v3_2_RC3.vehicle_status.GBFSVehicleStatus;
 import org.mobilitydata.gbfs.v3_2_RC3.vehicle_types.GBFSVehicleType;
 import org.mobilitydata.gbfs.v3_2_RC3.vehicle_types.GBFSVehicleTypes;
+import org.mobilitydata.gbfs.v3_2_RC3.virtual_station_probabilites.GBFSVirtualStation;
+import org.mobilitydata.gbfs.v3_2_RC3.virtual_station_probabilites.GBFSVirtualStationProbabilites;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.core.model.i18n.TranslatedString;
 import org.opentripplanner.framework.application.OTPFeature;
@@ -28,6 +31,8 @@ import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalPlace;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalSystem;
+import org.opentripplanner.service.vehiclerental.model.VirtualRentalStation;
+import org.opentripplanner.street.model.RentalFormFactor;
 import org.opentripplanner.updater.vehicle_rental.datasources.params.GbfsVehicleRentalDataSourceParameters;
 import org.opentripplanner.updater.vehicle_rental.datasources.params.RentalPickupType;
 import org.slf4j.Logger;
@@ -93,11 +98,30 @@ public class GbfsFeedMapper
           params.overloadingAllowed()
         );
 
+        Map<String, List<GBFSVirtualStation>> virtualByStationsById = Map.of();
+        var virtualStations = loader.getFeed(GBFSVirtualStationProbabilites.class);
+        if (virtualStations != null) {
+          virtualByStationsById = getVirtualStationsById(virtualStations);
+          GbfsVirtualRentalStationMapper virtualRentalStationMapper =
+            getGbfsVirtualRentalStationMapper(virtualByStationsById, system);
+          Stream<VirtualRentalStation> virtualStationStream = stationInformation
+            .getData()
+            .getStations()
+            .stream()
+            .map(virtualRentalStationMapper::mapStationInformation);
+          stations.addAll(virtualStationStream.toList());
+        }
+
         // Iterate over all known stations, and if we have any status information add it to those station objects.
+        // todo prevent this copy e.g. by creating method for virtual station stuff
+        Map<String, List<GBFSVirtualStation>> finalVirtualByStationsById = virtualByStationsById;
         Stream<VehicleRentalStation> stationStream = stationInformation
           .getData()
           .getStations()
           .stream()
+          .filter(gbfsStation ->
+            !finalVirtualByStationsById.containsKey(gbfsStation.getStationId())
+          )
           .map(stationInformationMapper::mapStationInformation)
           .filter(Objects::nonNull)
           .map(stationStatusMapper::mapStationStatus);
@@ -162,6 +186,28 @@ public class GbfsFeedMapper
       .collect(Collectors.groupingBy(GBFSVehicle::getStationId));
 
     return new GbfsVehicleAvailabilityMapper(gbfsVehiclesByStationId);
+  }
+
+  private static GbfsVirtualRentalStationMapper getGbfsVirtualRentalStationMapper(
+    Map<String, List<GBFSVirtualStation>> virtualByStationsById,
+    VehicleRentalSystem system
+  ) {
+    //todo formfactor should by dynamic by gbfs data
+    return new GbfsVirtualRentalStationMapper(
+      system,
+      RentalFormFactor.BICYCLE,
+      virtualByStationsById
+    );
+  }
+
+  private static @NonNull Map<String, List<GBFSVirtualStation>> getVirtualStationsById(
+    GBFSVirtualStationProbabilites virtualStationProbabilities
+  ) {
+    return virtualStationProbabilities
+      .getData()
+      .getVirtualStations()
+      .stream()
+      .collect(Collectors.groupingBy(GBFSVirtualStation::getStationId));
   }
 
   @Override

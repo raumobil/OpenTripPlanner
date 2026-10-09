@@ -94,7 +94,7 @@ union CallScheduledTime = ArrivalDepartureTime | TimeWindow
 union CallStopLocation = Location | LocationGroup | Stop
 
 "Rental place union that represents either a VehicleRentalStation or a RentalVehicle"
-union RentalPlace = RentalVehicle | VehicleRentalStation
+union RentalPlace = RentalVehicle | VehicleRentalStation | VirtualRentalStation
 
 "A feature for a step"
 union StepFeature = ElevatorUse | Entrance | EscalatorUse | StairsUse
@@ -1980,6 +1980,15 @@ type QueryType {
   ): [RentalPlace!]! @timingData
   "Needed until https://github.com/facebook/relay/issues/112 is resolved"
   viewer: QueryType
+  "Get all virtual rental stations"
+  virtualRentalStations(
+    """
+    Return virtual rental stations with these ids, i.e. value of field `stationId`.
+    **Note:** if an id is invalid (or the rental service is unavailable)
+    the returned list will contain `null` values.
+    """
+    ids: [String]
+  ): [VirtualRentalStation] @timingData
 }
 
 "Real-time estimates for a vehicle at a certain place."
@@ -2981,6 +2990,22 @@ type VehicleRentalUris {
   May be {@code null} if a rental URL does not exist.
   """
   web: String
+}
+
+"Vehicle rental station represents a location where users can rent bicycles etc. for a fee."
+type VirtualRentalStation implements Node & PlaceInterface {
+  "Global object ID provided by Relay. This value can be used to refetch this object using **node** query."
+  id: ID!
+  "Latitude of the vehicle rental station (WGS 84)"
+  lat: Float
+  "Longitude of the vehicle rental station (WGS 84)"
+  lon: Float
+  "Name of the vehicle rental station"
+  name: String!
+  "probability in percent, that there is at least one vehicle."
+  probability: Int
+  "ID of the station."
+  stationId: String
 }
 
 type debugOutput {

@@ -65,6 +65,7 @@ import org.opentripplanner.service.vehiclerental.VehicleRentalService;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalPlace;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalVehicle;
+import org.opentripplanner.service.vehiclerental.model.VirtualRentalStation;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
@@ -927,6 +928,40 @@ public class QueryTypeImpl implements GraphQLDataFetchers.GraphQLQueryType {
       }
 
       return vehicleRentalStationService.getVehicleRentalStations();
+    };
+  }
+
+  @Override
+  public DataFetcher<Iterable<VirtualRentalStation>> virtualRentalStations() {
+    return environment -> {
+      VehicleRentalService vehicleRentalStationService = environment
+        .<GraphQLRequestContext>getContext()
+        .vehicleRentalService();
+
+      var args = new GraphQLTypes.GraphQLQueryTypeVehicleRentalStationsArgs(
+        environment.getArguments()
+      );
+
+      if (args.getGraphQLIds() != null) {
+        ArrayListMultimap<String, VirtualRentalStation> virtualRentalStations =
+          vehicleRentalStationService
+            .getVirtualRentalStations()
+            .stream()
+            .collect(
+              Multimaps.toMultimap(
+                station -> station.id().toString(),
+                station -> station,
+                ArrayListMultimap::create
+              )
+            );
+        return args
+          .getGraphQLIds()
+          .stream()
+          .flatMap(id -> virtualRentalStations.get(id).stream())
+          .toList();
+      }
+
+      return vehicleRentalStationService.getVirtualRentalStations();
     };
   }
 

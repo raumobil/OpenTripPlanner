@@ -70,6 +70,7 @@ import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStationUris;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalSystem;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalVehicle;
+import org.opentripplanner.service.vehiclerental.model.VirtualRentalStation;
 import org.opentripplanner.street.model.openinghours.OHCalendar;
 import org.opentripplanner.transit.model.basic.Money;
 import org.opentripplanner.transit.model.network.ReplacedByRelation;
@@ -701,6 +702,7 @@ public class GraphQLDataFetchers {
     public DataFetcher<Iterable<VehicleRentalStation>> vehicleRentalStations();
     public DataFetcher<Iterable<VehicleRentalPlace>> vehicleRentalsByBbox();
     public DataFetcher<Object> viewer();
+    public DataFetcher<Iterable<VirtualRentalStation>> virtualRentalStations();
   }
 
   /** Real-time estimates for a vehicle at a certain place. */
@@ -1140,6 +1142,16 @@ public class GraphQLDataFetchers {
     public DataFetcher<String> android();
     public DataFetcher<String> ios();
     public DataFetcher<String> web();
+  }
+
+  /** Vehicle rental station represents a location where users can rent bicycles etc. for a fee. */
+  public interface GraphQLVirtualRentalStation {
+    public DataFetcher<graphql.relay.Relay.ResolvedGlobalId> id();
+    public DataFetcher<Double> lat();
+    public DataFetcher<Double> lon();
+    public DataFetcher<String> name();
+    public DataFetcher<Integer> probability();
+    public DataFetcher<String> stationId();
   }
 
   public interface GraphQLDebugOutput {

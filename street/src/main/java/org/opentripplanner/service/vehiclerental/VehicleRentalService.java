@@ -7,6 +7,7 @@ import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalPlace;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalVehicle;
+import org.opentripplanner.service.vehiclerental.model.VirtualRentalStation;
 
 /**
  * The read-only service for getting information about rental vehicles.
@@ -23,6 +24,8 @@ public interface VehicleRentalService {
   VehicleRentalVehicle getVehicleRentalVehicle(FeedScopedId id);
 
   List<VehicleRentalStation> getVehicleRentalStations();
+
+  List<VirtualRentalStation> getVirtualRentalStations();
 
   VehicleRentalStation getVehicleRentalStation(FeedScopedId id);
 
