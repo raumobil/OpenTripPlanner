@@ -18,6 +18,7 @@ import org.opentripplanner.apis.vectortiles.model.ZoomDependentNumber;
 import org.opentripplanner.apis.vectortiles.model.ZoomDependentNumber.ZoomStop;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalVehicle;
+import org.opentripplanner.service.vehiclerental.model.VirtualRentalStation;
 import org.opentripplanner.service.vehiclerental.street.StreetVehicleRentalLink;
 import org.opentripplanner.standalone.config.debuguiconfig.BackgroundTileLayer;
 import org.opentripplanner.street.model.StreetTraversalPermission;
@@ -402,6 +403,17 @@ public class DebugStyleSpec {
         .typeCircle()
         .vectorSourceLayer(rentalLayer)
         .classFilter(VehicleRentalStation.class)
+        .circleStroke(BLACK, LARGE_CIRCLE_LINE_WIDTH)
+        .circleRadius(LARGE_CIRCLE_RADIUS)
+        .circleColor(TURQUOISE)
+        .minZoom(13)
+        .maxZoom(MAX_ZOOM)
+        .intiallyHidden(),
+      StyleBuilder.ofId("virtual-rental-station")
+        .group(RENTAL_GROUP)
+        .typeCircle()
+        .vectorSourceLayer(rentalLayer)
+        .classFilter(VirtualRentalStation.class)
         .circleStroke(BLACK, LARGE_CIRCLE_LINE_WIDTH)
         .circleRadius(LARGE_CIRCLE_RADIUS)
         .circleColor(TURQUOISE)
