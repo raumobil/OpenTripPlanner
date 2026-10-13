@@ -27,6 +27,9 @@ public final class VirtualRentalStation implements VehicleRentalPlace {
   private final VehicleRentalSystem system;
   private final VehicleRentalStationUris rentalUris;
 
+  private final boolean overloadingAllowed;
+  private final boolean isArrivingInRentalVehicleAtDestinationAllowed;
+
   /**
    * @param probability probability in the range [0, 1] that at least one vehicle is available.
    */
@@ -38,7 +41,9 @@ public final class VirtualRentalStation implements VehicleRentalPlace {
     RentalFormFactor formFactor,
     int probability,
     @Nullable VehicleRentalSystem system,
-    @Nullable VehicleRentalStationUris rentalUris
+    @Nullable VehicleRentalStationUris rentalUris,
+    boolean overloadingAllowed,
+    boolean isArrivingInRentalVehicleAtDestinationAllowed
   ) {
     this.id = Objects.requireNonNull(id);
     this.name = name;
@@ -48,6 +53,8 @@ public final class VirtualRentalStation implements VehicleRentalPlace {
     this.probability = probability;
     this.system = system;
     this.rentalUris = rentalUris;
+    this.overloadingAllowed = overloadingAllowed;
+    this.isArrivingInRentalVehicleAtDestinationAllowed = isArrivingInRentalVehicleAtDestinationAllowed;
   }
 
   /** Probability (0..1) that at least one vehicle is available at this station. */
@@ -153,12 +160,12 @@ public final class VirtualRentalStation implements VehicleRentalPlace {
     RentalFormFactor formFactor,
     boolean includeRealtimeAvailability
   ) {
-    return false;
+    return true;
   }
 
   @Override
   public boolean isArrivingInRentalVehicleAtDestinationAllowed() {
-    return false;
+    return isArrivingInRentalVehicleAtDestinationAllowed;
   }
 
   @Override

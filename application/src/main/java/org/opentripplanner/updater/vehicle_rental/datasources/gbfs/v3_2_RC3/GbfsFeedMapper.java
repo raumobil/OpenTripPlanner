@@ -103,7 +103,13 @@ public class GbfsFeedMapper
         if (virtualStations != null) {
           virtualByStationsById = getVirtualStationsById(virtualStations);
           GbfsVirtualRentalStationMapper virtualRentalStationMapper =
-            getGbfsVirtualRentalStationMapper(virtualByStationsById, system);
+            getGbfsVirtualRentalStationMapper(
+              virtualByStationsById,
+              system,
+              vehicleTypes,
+              params.allowKeepingRentedVehicleAtDestination(),
+              params.overloadingAllowed()
+            );
           Stream<VirtualRentalStation> virtualStationStream = stationInformation
             .getData()
             .getStations()
@@ -190,13 +196,19 @@ public class GbfsFeedMapper
 
   private static GbfsVirtualRentalStationMapper getGbfsVirtualRentalStationMapper(
     Map<String, List<GBFSVirtualStation>> virtualByStationsById,
-    VehicleRentalSystem system
+    VehicleRentalSystem system,
+    Map<String, RentalVehicleType> vehicleTypes,
+    boolean allowKeepingRentedVehicleAtDestination,
+    boolean overloadingAllowed
   ) {
     //todo formfactor should by dynamic by gbfs data
     return new GbfsVirtualRentalStationMapper(
       system,
       RentalFormFactor.BICYCLE,
-      virtualByStationsById
+      virtualByStationsById,
+      vehicleTypes,
+      allowKeepingRentedVehicleAtDestination,
+      overloadingAllowed
     );
   }
 

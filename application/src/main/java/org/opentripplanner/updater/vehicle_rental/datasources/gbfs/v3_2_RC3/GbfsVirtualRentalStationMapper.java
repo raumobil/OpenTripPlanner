@@ -11,10 +11,12 @@ import org.mobilitydata.gbfs.v3_2_RC3.station_information.GBFSRentalUris;
 import org.mobilitydata.gbfs.v3_2_RC3.station_information.GBFSStation;
 import org.mobilitydata.gbfs.v3_2_RC3.virtual_station_probabilites.GBFSVirtualStation;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStationUris;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalSystem;
 import org.opentripplanner.service.vehiclerental.model.VirtualRentalStation;
 import org.opentripplanner.street.model.RentalFormFactor;
+import org.opentripplanner.updater.vehicle_rental.datasources.gbfs.support.UnknownVehicleTypeFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +32,11 @@ class GbfsVirtualRentalStationMapper {
   private final VehicleRentalSystem system;
   private final RentalFormFactor formFactor;
   private final Map<String, List<GBFSVirtualStation>> virtualByStationsById;
+  private final Map<String, RentalVehicleType> vehicleTypes;
+  private final boolean allowKeepingRentedVehicleAtDestination;
+  private final boolean overloadingAllowed;
+  private final UnknownVehicleTypeFilter vehicleTypeFilter;
+
 
   /**
    * @param virtualByStationsById virtual stations keyed by the station_id of the corresponding
@@ -38,11 +45,18 @@ class GbfsVirtualRentalStationMapper {
   public GbfsVirtualRentalStationMapper(
     VehicleRentalSystem system,
     RentalFormFactor formFactor,
-    Map<String, List<GBFSVirtualStation>> virtualByStationsById
+    Map<String, List<GBFSVirtualStation>> virtualByStationsById,
+    Map<String, RentalVehicleType> vehicleTypes,
+    boolean allowKeepingRentedVehicleAtDestination,
+    boolean overloadingAllowed
   ) {
     this.system = Objects.requireNonNull(system);
     this.formFactor = Objects.requireNonNull(formFactor);
     this.virtualByStationsById = Objects.requireNonNull(virtualByStationsById);
+    this.vehicleTypes = vehicleTypes;
+    this.allowKeepingRentedVehicleAtDestination = allowKeepingRentedVehicleAtDestination;
+    this.overloadingAllowed = overloadingAllowed;
+    this.vehicleTypeFilter = new UnknownVehicleTypeFilter(vehicleTypes);
   }
 
   /**
@@ -92,7 +106,9 @@ class GbfsVirtualRentalStationMapper {
       formFactor,
       probability,
       system,
-      mapRentalUris(station.getRentalUris())
+      mapRentalUris(station.getRentalUris()),
+      overloadingAllowed,
+      allowKeepingRentedVehicleAtDestination
     );
   }
 

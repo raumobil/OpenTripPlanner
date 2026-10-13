@@ -80,7 +80,7 @@ public class VehicleRentalEdge extends Edge {
           // traversing from renting to walking.
           if (
             s0.stateData.noRentalDropOffZonesAtStartOfReverseSearch.contains(network) ||
-            !station.availablePickupFormFactors(realtimeAvailability).contains(formFactor)
+              !station.availablePickupFormFactors(realtimeAvailability).contains(formFactor)
           ) {
             return State.empty();
           }
@@ -97,8 +97,8 @@ public class VehicleRentalEdge extends Edge {
         case RENTING_FROM_STATION -> {
           if (
             (realtimeAvailability && !station.allowPickupNow()) ||
-            !isVehicleAvailableDuringRentalPeriod(s0, station) ||
-            !station.availablePickupFormFactors(realtimeAvailability).contains(formFactor)
+              !isVehicleAvailableDuringRentalPeriod(s0, station) ||
+              !station.availablePickupFormFactors(realtimeAvailability).contains(formFactor)
           ) {
             return State.empty();
           }
@@ -106,11 +106,15 @@ public class VehicleRentalEdge extends Edge {
           // and so here it is checked if this bicycle could have been kept at the destination
           if (
             s0.mayKeepRentedVehicleAtDestination() &&
-            !station.isArrivingInRentalVehicleAtDestinationAllowed()
+              !station.isArrivingInRentalVehicleAtDestinationAllowed()
           ) {
             return State.empty();
           }
           if (!hasCompatibleNetworks(network, s0.getVehicleRentalNetwork())) {
+            return State.empty();
+          }
+          if (station instanceof VirtualRentalStation virtualRentalStation &&
+            virtualRentalStation.probability() < 50) {
             return State.empty();
           }
           s1.beginVehicleRentingAtStation(
@@ -137,9 +141,13 @@ public class VehicleRentalEdge extends Edge {
           if (station.isFloatingVehicle()) {
             s1.beginFloatingVehicleRenting(formFactor, getPropulsionType(station), network, false);
           } else {
+            if (station instanceof VirtualRentalStation virtualRentalStation &&
+              virtualRentalStation.probability() < 50) {
+              return State.empty();
+            }
             boolean mayKeep =
               request.allowArrivingInRentedVehicleAtDestination() &&
-              station.isArrivingInRentalVehicleAtDestinationAllowed();
+                station.isArrivingInRentalVehicleAtDestinationAllowed();
             s1.beginVehicleRentingAtStation(
               formFactor,
               getPropulsionType(station),
