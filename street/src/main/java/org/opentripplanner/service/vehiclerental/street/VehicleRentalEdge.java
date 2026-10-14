@@ -8,6 +8,7 @@ import org.opentripplanner.service.vehiclerental.model.RentalVehicleType.Propuls
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalPlace;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalVehicle;
+import org.opentripplanner.service.vehiclerental.model.VirtualRentalStation;
 import org.opentripplanner.street.mapping.StreetModeToRentalTraverseModeMapper;
 import org.opentripplanner.street.model.RentalFormFactor;
 import org.opentripplanner.street.model.StreetMode;
@@ -206,7 +207,7 @@ public class VehicleRentalEdge extends Edge {
           return true;
         }
         return vehicleOnStations.stream().anyMatch(vehicle ->
-            vehicle.availabilities()
+          vehicle.availabilities()
             .stream()
             .anyMatch(availability -> {
               return (rentalPeriod.start().isAfter(availability.from()) || rentalPeriod.start().equals(availability.from())) &&
@@ -244,9 +245,8 @@ public class VehicleRentalEdge extends Edge {
   }
 
   /**
-   * Extract the propulsion type from the rental place.
-   * For floating vehicles, this comes from the vehicle type.
-   * For stations, we use the propulsion type of the first matching vehicle type,
+   * Extract the propulsion type from the rental place. For floating vehicles, this comes from the
+   * vehicle type. For stations, we use the propulsion type of the first matching vehicle type,
    * defaulting to HUMAN if none is specified.
    */
   private PropulsionType getPropulsionType(VehicleRentalPlace place) {
