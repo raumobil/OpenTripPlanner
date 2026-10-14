@@ -13,6 +13,7 @@ import org.opentripplanner.street.mapping.StreetModeToRentalTraverseModeMapper;
 import org.opentripplanner.street.model.RentalFormFactor;
 import org.opentripplanner.street.model.StreetMode;
 import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.search.request.RentalRequest;
 import org.opentripplanner.street.search.state.State;
 import org.opentripplanner.street.search.state.StateEditor;
 
@@ -23,6 +24,7 @@ import org.opentripplanner.street.search.state.StateEditor;
  */
 public class VehicleRentalEdge extends Edge {
 
+  private static final long TIME_FOR_DETOUR = 60 * 20;
   public final RentalFormFactor formFactor;
 
   private VehicleRentalEdge(VehicleRentalPlaceVertex vertex, RentalFormFactor formFactor) {
@@ -86,9 +88,9 @@ public class VehicleRentalEdge extends Edge {
             return State.empty();
           }
           if (station.isFloatingVehicle()) {
-            if (!isVehicleAvailableDuringRentalPeriod(s0, station)) {
-              return State.empty();
-            }
+//            if (!isVehicleAvailableDuringRentalPeriod(s0, station)) {
+//              return State.empty();
+//            }
             s1.beginFloatingVehicleRenting(formFactor, getPropulsionType(station), network, true);
             pickedUp = true;
           } else {
@@ -114,10 +116,10 @@ public class VehicleRentalEdge extends Edge {
           if (!hasCompatibleNetworks(network, s0.getVehicleRentalNetwork())) {
             return State.empty();
           }
-          if (station instanceof VirtualRentalStation virtualRentalStation &&
-            virtualRentalStation.probability() < 50) {
-            return State.empty();
-          }
+//          if (station instanceof VirtualRentalStation virtualRentalStation &&
+//            virtualRentalStation.probability() < 50) {
+//            return State.empty();
+//          }
           s1.beginVehicleRentingAtStation(
             formFactor,
             getPropulsionType(station),
@@ -142,10 +144,10 @@ public class VehicleRentalEdge extends Edge {
           if (station.isFloatingVehicle()) {
             s1.beginFloatingVehicleRenting(formFactor, getPropulsionType(station), network, false);
           } else {
-            if (station instanceof VirtualRentalStation virtualRentalStation &&
-              virtualRentalStation.probability() < 50) {
-              return State.empty();
-            }
+//            if (station instanceof VirtualRentalStation virtualRentalStation &&
+//              virtualRentalStation.probability() < 50) {
+//              return State.empty();
+//            }
             boolean mayKeep =
               request.allowArrivingInRentedVehicleAtDestination() &&
                 station.isArrivingInRentalVehicleAtDestinationAllowed();
@@ -176,9 +178,17 @@ public class VehicleRentalEdge extends Edge {
       }
     }
 
-    s1.incrementWeight(
-      pickedUp ? request.pickupCost().toSeconds() : request.dropOffCost().toSeconds()
-    );
+//    double weight;
+//    if (pickedUp) {
+//      weight = request.pickupCost().toSeconds();
+//      if (station instanceof VirtualRentalStation virtualRentalStation) {
+//        double probabilityTooMissVehicle = 1 - ((double) virtualRentalStation.probability() / 100);
+//        weight += probabilityTooMissVehicle * TIME_FOR_DETOUR;
+//      }
+//    } else {
+//      weight = request.dropOffCost().toSeconds();
+//    }
+    s1.incrementWeight(pickedUp ? getPickupWeight(request, station) : request.dropOffCost().toSeconds());
     s1.incrementTimeInMilliseconds(
       pickedUp ? request.pickupTime().toMillis() : request.dropOffTime().toMillis()
     );
@@ -267,4 +277,15 @@ public class VehicleRentalEdge extends Edge {
     }
     return PropulsionType.HUMAN;
   }
+
+  private double getPickupWeight(RentalRequest request, VehicleRentalPlace station) {
+    double weight;
+    weight = request.pickupCost().toSeconds();
+    if (station instanceof VirtualRentalStation virtualRentalStation) {
+      double probabilityTooMissVehicle = 1 - ((double) virtualRentalStation.probability() / 100);
+      weight += probabilityTooMissVehicle * TIME_FOR_DETOUR;
+    }
+    return weight;
+  }
+
 }
